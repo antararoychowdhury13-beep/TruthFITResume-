@@ -1,0 +1,312 @@
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+ <defs>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+  <symbol id="i-tray" viewBox="0 0 24 24"><path d="M4 13l2.4-7.4A2.3 2.3 0 0 1 8.6 4h6.8a2.3 2.3 0 0 1 2.2 1.6L20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M4 13h4.5l1 2h5l1-2H20"/></symbol>
+  <symbol id="i-scope" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.4 15.4L21 21"/><path d="M10.5 7.3l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z"/></symbol>
+  <symbol id="i-checklist" viewBox="0 0 24 24"><path d="M4 6.5l1.5 1.5L8 5.5M4 12.5l1.5 1.5L8 11.5M4 18.5l1.5 1.5L8 17.5M11.5 7H20M11.5 13H20M11.5 19H20"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9.5M18.5 7H20M4 17h3.5M12.5 17H20"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/></symbol>
+  <symbol id="i-review" viewBox="0 0 24 24"><path d="M20.5 11.5a8.5 8.5 0 0 1-12.3 7.6L3.5 20.5l1.3-4.4a8.5 8.5 0 1 1 15.7-4.6z"/><path d="M8.5 11.8l2.5 2.5 4.6-4.8"/></symbol>
+  <symbol id="i-viewfinder" viewBox="0 0 24 24"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5M8 10h8M8 14h5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10.5" rx="2.5"/><path d="M8 10.5V8a4 4 0 0 1 7.6-1.7"/></symbol>
+  <symbol id="i-check-fill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7.6 12.3l3 3L16.4 9.2" stroke="#fff" stroke-width="2.2"/></symbol>
+  <symbol id="i-half" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-warn-fill" viewBox="0 0 24 24"><path d="M10.3 3.9a2 2 0 0 1 3.4 0l8.1 14.1A2 2 0 0 1 20.1 21H3.9a2 2 0 0 1-1.7-3z" fill="currentColor" stroke="none"/><path d="M12 9v4.6M12 17.1v.1" stroke="#fff" stroke-width="2.3"/></symbol>
+  <symbol id="i-xmark-fill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M9 9l6 6M15 9l-6 6" stroke="#fff" stroke-width="2.2"/></symbol>
+  <symbol id="i-minus-fill" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M8 12h8" stroke="#fff" stroke-width="2.2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.1"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5L12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-chev-u" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><circle cx="12" cy="12" r="7"/><path d="M12 2.5V5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><path d="M4.5 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16M14.5 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16.5v-5M12 16.5V6M17 16.5V9"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 5.3l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11 3l1.8 4.7L17.5 9.5l-4.7 1.8L11 16l-1.8-4.7L4.5 9.5l4.7-1.8z"/><path d="M18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.8 12.5A8.3 8.3 0 1 0 6.2 6"/><path d="M3.5 4v4.5H8M12 8v4.5l3 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.3-7.5 9.5-4.3-1.2-7.5-4.9-7.5-9.5V6z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.4"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 4v16M8 20h8M5 7h14M5 7l-2.8 6a2.8 2.8 0 0 0 5.6 0zM19 7l-2.8 6a2.8 2.8 0 0 0 5.6 0z"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M6 3v12.5M18 8.5c0 5-6 4-11.2 7.7"/></symbol>
+  <symbol id="i-columns" viewBox="0 0 24 24"><path d="M3 9.5L12 4l9 5.5M5.5 10v8M9.8 10v8M14.2 10v8M18.5 10v8M3 20.5h18"/></symbol>
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 3.5V7M14 3.5V7M10 17v3.5M14 17v3.5M3.5 10H7M3.5 14H7M17 10h3.5M17 14h3.5"/></symbol>
+  <symbol id="i-brush" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.9 2.9L12.5 15.3l-3-3z"/><path d="M8.6 13.2c-2.4 0-3.9 1.7-3.9 3.9 0 1.4-.8 2.5-2 2.9 3.6 1.3 8.2.3 8.2-3.6"/></symbol>
+  <symbol id="i-grad" viewBox="0 0 24 24"><path d="M2.5 9.5L12 5l9.5 4.5L12 14z"/><path d="M6.5 11.6V16c3 2.5 8 2.5 11 0v-4.4M21.5 9.5v5"/></symbol>
+  <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M16.3 4a2.4 2.4 0 0 1 3.4 3.4L8 19.2 3.5 20.5 4.8 16z"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-xmark" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4.6h-4.6"/></symbol>
+  <symbol id="i-envelope" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7.5l8 6 8-6"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-arrow-ur" viewBox="0 0 24 24"><path d="M7 17L17 7M8.5 7H17v8.5"/></symbol>
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12V5a1.5 1.5 0 0 1 1.5-1.5h7l8.5 8.5-8.5 8.5z"/><circle cx="8" cy="8" r="1.4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-app" viewBox="0 0 24 24"><path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/><path d="M13.5 3L19 8.5V11M13.5 3v5.5H19"/><circle cx="17" cy="17" r="4"/><path d="M15.2 17l1.3 1.3 2.3-2.5"/></symbol>
+  <symbol id="i-person" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.1M4.5 12h.1M4.5 18h.1"/></symbol>
+ </defs>
+</svg>
+
+<div class="app">
+ <aside class="sidebar" aria-label="Application">
+  <div class="sb-brand"><div class="appicon" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="#i-app"/></svg></div><div><b>TruthFit</b><span>Evidence-backed applications</span></div></div>
+  <div class="sb-label">Application</div>
+  <nav class="sb-list" id="stepper" aria-label="Steps"></nav>
+  <div class="sb-label">Account</div>
+  <div class="sb-list">
+   <button class="sb-row" id="planBtn" aria-haspopup="dialog"><span class="tile tp"><svg class="ic" aria-hidden="true"><use href="#i-card"/></svg></span><span>Plan</span><span class="st-s"><span class="meterdots" id="usageMeter" aria-hidden="true"></span><span id="planLabel">Free</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
+   <button class="sb-row" id="settingsBtn" aria-haspopup="dialog"><span class="tile ts"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></span><span>AI &amp; Privacy</span><span class="st-s"><span id="providerLabel">Opus 5.5</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
+  </div>
+  <div class="sb-foot" id="sbFoot">Analysis runs on Claude Opus 5.5 when this page is open in Claude. Elsewhere it falls back to the offline engine.</div>
+ </aside>
+
+ <div class="content">
+  <header class="navbar"><div class="navbar-in">
+   <button class="nav-back" id="navBack" aria-label="Back"><svg class="ic" aria-hidden="true"><use href="#i-chev-l"/></svg><span id="navBackLabel">Back</span></button>
+   <button class="nav-title" id="navTitle" aria-haspopup="dialog" aria-label="Show all steps"><b><span id="navStep">Import</span><svg class="ic" aria-hidden="true"><use href="#i-chev-d"/></svg></b><span class="nav-prog" aria-hidden="true"><i id="navProg"></i></span></button>
+   <div class="nav-actions"><button class="iconbtn m" id="planBtnM" aria-label="Plan"><svg class="ic" aria-hidden="true"><use href="#i-card"/></svg></button><button class="iconbtn m" id="settingsBtnM" aria-label="AI and privacy settings"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></button></div>
+  </div></header>
+
+<main id="app">
+
+<!-- 1 IMPORT -->
+<section class="view" data-step="1">
+  <div class="eyebrow">Step 1 of 7</div>
+  <h1 class="title">Import</h1>
+  <p class="lede">Bring the vacancy and your evidence. TruthFit turns your résumé into a verified vault, researches the role, and only proposes changes it can trace back to something you've done.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-h"><div><h2>Application details</h2><p>Required fields are marked •</p></div><button class="btn line sm" id="loadExample"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Load Keka example</button></div>
+      <div class="card-b">
+        <div class="row2">
+          <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization"></div>
+          <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off"></div>
+        </div>
+        <div class="field drop" data-target="jd">
+          <div class="lbl"><label for="jd">Job description •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="jd"></label></div>
+          <textarea id="jd" placeholder="Paste the full vacancy — responsibilities, qualifications and required skills."></textarea>
+          <div class="upmsg" data-msg="jd"></div>
+        </div>
+        <div class="field drop" data-target="resume">
+          <div class="lbl"><label for="resume">Your résumé •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> PDF, Word or text<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="resume"></label></div>
+          <textarea id="resume" class="tall" placeholder="Paste or drop your complete résumé. Keep company names, titles, dates and numbers exactly as they are."></textarea>
+          <div class="upmsg" data-msg="resume"></div>
+        </div>
+        <div class="field drop" data-target="extra">
+          <div class="lbl"><label for="extra">Extra evidence <em>optional</em></label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="extra"></label></div>
+          <textarea id="extra" placeholder="Projects, certificates, awards, side work — anything true that isn't on your résumé yet."></textarea>
+          <div class="upmsg" data-msg="extra"></div>
+        </div>
+        <div class="field"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
+        <div class="row3">
+          <div class="field"><span class="lbl">Length</span><div class="seg" data-opt="pages"><button aria-pressed="false" data-v="1">1 page</button><button aria-pressed="true" data-v="2">2 pages</button></div></div>
+          <div class="field"><div class="lbl"><label for="region">Region</label></div><select id="region"><option value="IN">India</option><option value="UK">UK / Europe</option><option value="US">United States</option><option value="GCC">Middle East (GCC)</option></select></div>
+          <div class="field"><span class="lbl">Tone</span><div class="seg" data-opt="tone"><button aria-pressed="false" data-v="bold">Bold</button><button aria-pressed="true" data-v="balanced">Balanced</button><button aria-pressed="false" data-v="modest">Modest</button></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="side-stack">
+      <div class="card"><div class="card-h"><h2>How TruthFit decides</h2></div><div class="card-b">
+        <ul class="rules">
+          <li><span class="n" style="background:#5856d6"><svg class="ic" aria-hidden="true"><use href="#i-tray"/></svg></span><div><b>Your evidence is the authority</b>Every claim links to a vault record you can see and confirm.</div></li>
+          <li><span class="n" style="background:#af52de"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg></span><div><b>Sources are always labelled</b>Vacancy, role benchmark, company signal or inference — never blended.</div></li>
+          <li><span class="n" style="background:#ff9500"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span><div><b>Facts are locked</b>Employers, titles, dates and qualifications can't be rewritten.</div></li>
+          <li><span class="n" style="background:#30b0c7"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg></span><div><b>The output is tested</b>Your résumé is parsed back to check nothing was lost.</div></li>
+        </ul>
+      </div></div>
+      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">Claude Opus 5.5</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
+      <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Email and phone are removed before anything reaches the AI and restored on export.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 VAULT -->
+<section class="view hide" data-step="2">
+  <div class="eyebrow">Step 2 of 7</div>
+  <h1 class="title">Evidence Vault</h1>
+  <p class="lede">Your résumé as evidence records. Confirm what's right — confirmed records carry more weight, and locked facts can never be changed by the AI.</p>
+  <div class="vault-sum" id="vaultSum"></div>
+  <div class="grid2">
+    <div class="card" id="vaultList"></div>
+    <div class="side-stack">
+      <div class="card"><div class="card-h"><h2>Reading this list</h2></div><div class="card-b">
+        <ul class="rules">
+          <li><span class="n" style="background:#007aff"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span><div><b>Locked fact</b>Employer, title, dates, qualification. Unlock only to fix an extraction error.</div></li>
+          <li><span class="n" style="background:#34c759"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg></span><div><b>Confirmed</b>You've checked this record is true and accurate.</div></li>
+          <li><span class="n" style="background:#8e8e93"><svg class="ic" aria-hidden="true"><use href="#i-link"/></svg></span><div><b>Record ID</b>Every later suggestion cites these, like <span class="cite">E4</span>.</div></li>
+        </ul>
+      </div></div>
+      <button class="btn line" id="confirmAll"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Confirm all résumé records</button>
+    </div>
+  </div>
+</section>
+
+<!-- 3 ROLE INTELLIGENCE -->
+<section class="view hide" data-step="3">
+  <div class="eyebrow">Step 3 of 7</div>
+  <h1 class="title">Role Intelligence</h1>
+  <p class="lede">What this role really asks for — classified, benchmarked and researched. Each insight shows its source and confidence. Benchmarks guide; they never add requirements silently.</p>
+  <div class="card" style="margin-bottom:18px"><div class="card-h"><div><h2>Classification</h2><p>Detected automatically — correct anything that's wrong.</p></div><span class="tag t-ok" id="clsConf"></span></div>
+    <div class="card-b"><div class="class-grid" id="clsGrid"></div><p class="hint" id="packNote"></p></div></div>
+  <div class="card"><div class="card-h"><div><h2>Research</h2><p id="resMeta"></p></div></div>
+    <div class="card-b" style="padding-bottom:6px"><div class="legend" id="resFilters" role="group" aria-label="Filter by source"></div></div>
+    <div id="resList"></div></div>
+</section>
+
+<!-- 4 EVIDENCE MAP -->
+<section class="view hide" data-step="4">
+  <div class="eyebrow">Step 4 of 7</div>
+  <h1 class="title">Evidence Map</h1>
+  <p class="lede">Each requirement matched to a vault record — how strong, how direct and how recent the proof is. Close gaps right here, or confirm you don't have it.</p>
+  <div class="vault-sum" id="mapSum"></div>
+  <div class="card">
+    <div class="card-b" style="padding-bottom:10px"><div class="legend" id="mapFilters" role="group" aria-label="Filter requirements"></div></div>
+    <div id="reqList"></div>
+    <div class="section-h"><h3>Role benchmark — not in this vacancy</h3><span class="hint" style="margin:0">For awareness. Only added if you choose to.</span></div>
+    <div id="benchList"></div>
+  </div>
+</section>
+
+<!-- 5 STRATEGY -->
+<section class="view hide" data-step="5">
+  <div class="eyebrow">Step 5 of 7</div>
+  <h1 class="title">Strategy</h1>
+  <p class="lede">Choose how TruthFit tailors. Strategy changes which suggestions you see and how they're framed — never the truth rules.</p>
+  <div class="modes" id="modes" role="radiogroup" aria-label="Tailoring strategy"></div>
+  <div class="notice green" id="modeEffect" style="margin-top:16px"></div>
+</section>
+
+<!-- 6 REVIEW -->
+<section class="view hide" data-step="6">
+  <div class="eyebrow">Step 6 of 7</div>
+  <h1 class="title">Review</h1>
+  <p class="lede">Approve every change with its proof. Each card cites the vault records behind it, labels where the idea came from, and runs truth, fact-lock and authenticity checks.</p>
+  <div class="notice amber hide" id="genericNote" style="margin-bottom:14px"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>You're using your own inputs, so the prototype's offline engine made these suggestions. The working tool's AI proposes richer rewrites under the same checks.</div></div>
+  <div class="notice green hide" id="aiNote" style="margin-bottom:14px"></div>
+  <div class="toolbar"><div class="counts" id="chgCounts"></div><button class="btn line sm" id="acceptLow"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg> Accept all low-risk</button></div>
+  <div id="chgList"></div>
+  <p class="hint" id="hiddenNote"></p>
+</section>
+
+<!-- 7 DESIGN & PARSE TEST -->
+<section class="view hide" data-step="7">
+  <div class="eyebrow">Step 7 of 7</div>
+  <h1 class="title" id="finalTitle">Design &amp; Test</h1>
+  <p class="lede">Pick an output class and style. TruthFit reads your résumé back the way an applicant-tracking system would and checks every fact survived.</p>
+  <div class="jump" aria-label="Jump to"><button class="fchip" data-jump="scoreCard"><svg class="ic" aria-hidden="true"><use href="#i-chart"/></svg> Readiness <b id="jumpScore"></b></button><button class="fchip" data-jump="parseCard"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg> Parse test</button><button class="fchip" data-jump="exportCard"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Export</button></div>
+  <div class="grid2">
+    <div>
+      <div class="card tplbar" id="tplBar">
+        <div class="tpl-h"><b>Template</b><button class="btn plain sm" id="tplCustomBtn" style="margin-left:auto" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg> Customise</button></div>
+        <div class="tpl-classes" id="tplClasses"></div>
+        <div class="tpl-gallery" id="tplGallery" role="group" aria-label="Templates"></div>
+        <div class="tpl-custom hide" id="tplCustom">
+          <div class="tpl-grid">
+            <div><div class="lbl"><label for="tFont">Font</label><em>ATS-safe only</em></div><select id="tFont"><option value="arial">Arial</option><option value="sans">Helvetica</option><option value="calibri">Calibri</option><option value="georgia">Georgia</option><option value="garamond">Garamond</option></select></div>
+            <div><span class="lbl">Accent colour</span><div class="sw" id="tAccent"></div></div>
+            <div><span class="lbl">Headings</span><div class="seg" data-t="heading"><button data-v="rule">Underline</button><button data-v="accent">Colour</button><button data-v="bar">Bar</button><button data-v="center">Centred</button></div></div>
+            <div><span class="lbl">Density</span><div class="seg" data-t="density"><button data-v="compact">Compact</button><button data-v="normal">Normal</button><button data-v="airy">Airy</button></div></div>
+            <div><span class="lbl">Name &amp; contact</span><div class="seg" data-t="name"><button data-v="left">Left</button><button data-v="center">Centred</button></div><div class="switchrow" style="margin-top:10px"><label for="tNameAccent" style="font-size:.875rem">Name in accent colour</label><input type="checkbox" class="tg" id="tNameAccent"></div></div>
+            <div><span class="lbl">Layout</span><div class="seg" data-t="layout"><button data-v="one">One column</button><button data-v="two">Two column</button></div><p class="hint" id="layoutHint"></p></div>
+          </div>
+          <div><span class="lbl">Section order <em>move or hide</em></span><ul class="secs" id="tSecs"></ul></div>
+          <div><div class="lbl"><label for="tName">Save as my template</label><em>this browser only</em></div><div class="savetpl"><input type="text" id="tName" placeholder="e.g. Design leadership — India"><button class="btn primary sm" id="tSave">Save</button></div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-ftab="resume"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Visual</button><button role="tab" aria-selected="false" data-ftab="parsed"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg> Parsed</button><button role="tab" aria-selected="false" data-ftab="letter"><svg class="ic" aria-hidden="true"><use href="#i-envelope"/></svg> Letter</button></div>
+        <div class="switchrow" style="margin-left:auto;font-size:.8125rem;color:var(--label2)"><label for="showDiff">Highlight changes</label><input type="checkbox" class="tg" id="showDiff" checked></div>
+        <button class="btn plain sm" id="editToggle"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg> Edit text</button>
+      </div>
+      <div id="finalWrap" class="pv"><div class="scanline" aria-hidden="true"></div><div class="paper" id="paper"></div>
+        <textarea id="finalEdit" class="hide" style="min-height:720px;font-family:var(--mono);font-size:.8125rem"></textarea></div>
+      <div id="parsedWrap" class="hide"><div class="notice blue" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>This is the plain text an applicant-tracking system extracts from your résumé, in the order it reads it.</div></div><div class="parsed" id="parsedText"></div></div>
+      <div id="letterWrap" class="hide"><div class="letter-tools"><button class="btn primary sm" id="letterAI"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Write with Claude Opus 5.5</button><button class="btn ghost sm hide" id="letterStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button><button class="btn plain sm hide" id="letterReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Use template</button><span class="hint" id="letterNote" style="margin:0"></span></div><div class="paper" id="letter" style="min-height:500px;white-space:pre-wrap"></div></div>
+    </div>
+    <div class="side-stack">
+      <div class="card" id="scoreCard"><div class="card-h"><div><h2>Readiness Score</h2><p>Not an employer's ATS score — a transparent estimate across 8 dimensions.</p></div></div><div class="card-b">
+        <div class="score-hero" id="scoreHero"></div>
+        <div class="dims" id="dims"></div>
+      </div></div>
+      <div class="card" id="parseCard"><div class="card-h"><div><h2>Parse Test</h2><p id="parseMeta">Reads your résumé back like an ATS.</p></div><button class="btn plain sm" id="rerunParse"><svg class="ic" aria-hidden="true"><use href="#i-refresh"/></svg> Run again</button></div><div class="card-b"><ul class="checks" id="parseChecks"></ul></div></div>
+      <div class="card"><div class="card-h"><h2>Authenticity</h2></div><div class="card-b"><ul class="checks" id="authChecks"></ul></div></div>
+      <div class="card" id="exportCard"><div class="card-h"><h2>Export &amp; Versions</h2></div><div class="card-b">
+        <div class="exp">
+          <button class="btn primary" id="copyBtn"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> Copy</button>
+          <button class="btn line" id="htmlBtn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Styled HTML</button>
+          <button class="btn ghost" id="txtBtn"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg> Text</button>
+          <button class="btn ghost" id="mdBtn"><svg class="ic" aria-hidden="true"><use href="#i-doc"/></svg> Markdown</button>
+        </div>
+        <p class="hint"><b>PDF:</b> open the styled HTML, then File → Print → Save as PDF. Word export and re-parsing the exported file are part of the working tool.</p>
+        <button class="btn ghost" id="saveVersion" style="width:100%;margin-top:12px"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg> Save this version</button>
+        <ul class="vers" id="versions"></ul>
+      </div></div>
+    </div>
+  </div>
+</section>
+</main>
+
+  <div class="actionbar"><div class="actionbar-in">
+    <span class="msg" id="barMsg"></span>
+    <button class="btn ghost" id="backBtn"><svg class="ic" aria-hidden="true"><use href="#i-chev-l"/></svg> Back</button>
+    <button class="btn primary" id="nextBtn">Continue</button>
+  </div></div>
+ </div>
+</div>
+
+<!-- Analysis overlay -->
+<div class="overlay hide" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+  <div class="assemble">
+    <div class="assemble-h"><div class="pulse run" id="pulse"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></div><div><div class="eyebrow" style="margin:0">Analysing</div><h2 style="margin:2px 0 0;font-size:1.25rem;font-weight:700" id="ovTitle">Assembling your evidence…</h2></div></div>
+    <div class="board" aria-hidden="true">
+      <div class="cloud" id="cloudA"><span class="k">Vacancy asks for</span></div>
+      <div class="bridge" id="bridge"><svg viewBox="0 0 60 110"><path d="M2 18 C 30 18, 30 55, 58 55"/><path d="M2 55 C 30 55, 30 55, 58 55"/><path d="M2 92 C 30 92, 30 55, 58 55"/></svg></div>
+      <div class="cloud" id="cloudB"><span class="k">Your evidence</span></div>
+    </div>
+    <ol class="stages" id="stages" aria-live="polite"></ol>
+    <div class="ovstream hide" id="ovStream" aria-hidden="true"></div>
+    <div class="pbar"><i id="ovBar"></i></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px"><p class="hint" id="ovNote" style="margin:0;flex:1"></p><button class="btn ghost sm hide" id="ovStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button></div>
+  </div>
+</div>
+
+<!-- Sheets -->
+<div class="scrim hide" id="scrim"></div>
+<div class="sheet narrow hide" id="stepsSheet" role="dialog" aria-modal="true" aria-labelledby="stepsTitle">
+  <div class="sheet-h"><h2 id="stepsTitle">Application steps</h2><button class="x" data-close aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg></button></div>
+  <div class="sheet-b"><nav class="sb-list" id="stepperM" aria-label="Steps"></nav></div>
+</div>
+<div class="sheet narrow hide" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="sheet-h"><h2 id="setTitle">AI &amp; Privacy</h2><button class="x" data-close aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg></button></div>
+  <div class="sheet-b">
+    <div><div class="grouped-h">AI model</div><div class="grouped" id="providers">
+      <label class="opt"><input type="radio" name="prov" value="opus" checked><div><b>Claude Opus 5.5 <span class="tag t-low">Live</span></b><span>Runs inside this page on your own Claude account — no API key. The first use asks your permission. Every answer is re-checked by TruthFit's guardrails.</span></div></label>
+      <label class="opt disabled"><input type="radio" name="prov" value="gpt" disabled><div><b>GPT-5.6 Sol <span class="tag t-nice">Working tool</span></b><span>OpenAI's flagship. Needs TruthFit's secure server and an OpenAI API key ($5 / $30 per million tokens) — this page can't call outside servers.</span></div></label>
+      <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
+    </div><div class="grouped-f" id="aiStatus">Checking whether Claude is available in this view…</div></div>
+        <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Remove email &amp; phone before sending to the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
+  </div>
+</div>
+<div class="sheet hide" id="planSheet" role="dialog" aria-modal="true" aria-labelledby="planTitle">
+  <div class="sheet-h"><div><h2 id="planTitle">Plans</h2><p class="hint" style="margin:2px 0 0">Built around how job searches actually happen. Prices are prototype test hypotheses.</p></div><button class="x" data-close aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg></button></div>
+  <div class="sheet-b">
+    <div class="notice green" id="usageNote"></div>
+    <div class="plans" id="plans"></div>
+    <div class="grouped"><div class="pad" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between">
+      <div><b>Coach &amp; institution</b><div class="hint" style="margin:2px 0 0">Candidate workspaces, coach approvals, consent management, cohort analytics and custom role packs — for universities, bootcamps, outplacement firms and coaches.</div></div>
+      <button class="btn line sm" data-plan="coach">Talk to us</button></div></div>
+  </div>
+</div>
+<div class="asheet hide" id="resetSheet" role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+  <div class="grp"><div class="msgx"><b id="resetTitle">Start a new application?</b>This clears the inputs, vault and decisions for this application. Saved versions and templates stay.</div><button class="destructive" id="resetConfirm">Clear and Start Over</button></div>
+  <button class="cancel" data-close>Cancel</button>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"><svg class="ic" aria-hidden="true"><use href="#i-check-fill"/></svg><span id="toastMsg"></span><button id="toastAct" class="hide"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Undo</button></div>
