@@ -694,7 +694,7 @@ function renderPaper(text,clean){const o=ordered(text);let hd='<div class="hdr">
   const sec=s=>`<h5>${esc(s.title)}</h5>${linesHTML(s.lines,clean)}`;
   if(S.tpl.layout==='two'){const side=o.secs.filter(s=>/skill|education|tool|language|certif|award|interest/i.test(s.title)),main=o.secs.filter(s=>!side.includes(s));return hd+`<div class="cols"><aside>${side.map(sec).join('')}</aside><div class="main">${main.map(sec).join('')}</div></div>`}
   return hd+o.secs.map(sec).join('')}
-const paperClass=()=>`paper h-${S.tpl.heading} d-${S.tpl.density} n-${S.tpl.name_}${S.tpl.nameAccent?' na':''}${S.tpl.layout==='two'?' two':''}`;
+const paperClass=()=>`paper h-${S.tpl.heading} d-${S.tpl.density} n-${S.tpl.name_}${S.tpl.nameAccent?' na':''}${S.tpl.layout==='two'?' two':''} t-${S.opts.pages}`;
 const paperStyle=()=>`--accent:${S.tpl.accent};--pfont:${FONTS[S.tpl.font]}`;
 function paginate(){const p=$('#paper');p.querySelectorAll('.pagemark').forEach(x=>x.remove());if(!p.clientWidth||p.offsetParent===null)return 1;const ph=p.clientWidth*1.4142;const n=Math.max(1,Math.ceil((p.scrollHeight-4)/ph));
   for(let i=1;i<n;i++){const m=document.createElement('div');m.className='pagemark';m.style.top=(i*ph)+'px';m.innerHTML=`<span>PAGE ${i+1}</span>`;p.appendChild(m)}S.pages=Math.max(1,Math.round(p.scrollHeight/ph*10)/10);return n}
@@ -746,7 +746,7 @@ function runParse(silent){
   const hid=Object.keys(S.tpl.hidden).filter(k=>S.tpl.hidden[k]);
   if(hid.some(h=>/experience|education/i.test(h)))checks.push(['fail','Required section hidden',hid.join(', ')+' is hidden in your template.']);
   checks.push(['pass','No icons, images or text boxes','Everything is real text an ATS can read.']);
-  const target=+S.opts.pages,pg=S.pages||1;checks.push(pg<=target+0.05?['pass',`Fits ${target} page${target>1?'s':''}`,`About ${pg} page${pg>1?'s':''} at this density.`]:['warn',`Runs to ~${pg} pages`,`Target is ${target}. Try Compact density or hide a section.`]);
+  const target=+S.opts.pages,pg=S.pages||1;checks.push(pg<=target+0.05?['pass',`Fits ${target} page${target>1?'s':''}`,`About ${pg} page${pg>1?'s':''} in the final A4 layout.`]:['warn',`Runs to ~${pg} pages`,`Target is ${target}. Remove or shorten lower-priority evidence; TruthFit will not delete it automatically.`]);
   const fails=checks.filter(c=>c[0]==='fail').length,warns=checks.filter(c=>c[0]==='warn').length;
   S.parse={checks,out,orderIssue,fails,warns,miss:miss.length,contact:EMAIL.test(text)||PHONE.test(text),roleLoss:checks.filter(c=>c[0]==='fail'&&/fact lost/.test(c[1])).length};
   $('#parseChecks').innerHTML=checks.map((c,i)=>`<li class="${c[0]}" style="animation-delay:${reduce?0:i*70}ms"><span class="c">${ic(c[0]==='pass'?'check-fill':c[0]==='warn'?'warn-fill':'xmark-fill')}</span><div><b>${esc(c[1])}</b><small>${esc(c[2])}</small></div></li>`).join('');
@@ -842,6 +842,7 @@ function letter(){if(S.aiLetter)return S.aiLetter;const I=S.inputs,name=(S.vault
   return `Dear Hiring Team at ${I.company},\n\nI'm applying for the ${I.role} role. ${sig?`Your emphasis on ${/collaboration/i.test(sig.text)?'collaboration and innovation with impact':'design at scale'} matches how I work. `:''}The vacancy asks for ${ev.map(r=>r.label.split(' — ')[0].toLowerCase()).join(', ')} — areas where I can point to specific results:\n\n${ev.map(r=>{const x=recOf(r);return '• '+(x?x.text:'').replace(/^[•\-*]\s*/,'')}).join('\n')}\n\nI'd welcome the chance to discuss how this experience could support ${I.company}'s design team.\n\nKind regards,\n${name}\n\n—\nEvery claim above is cited from your evidence vault.`}
 function renderFinal(){
   S.finalText=S.manualFinal!=null?S.manualFinal:buildFinal();
+  if(S.opts.pages==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal';if(S.tplKey!=='compact')S.tplKey='custom'}
   $('#finalTitle').textContent='Design & Test';
   $('#finalEdit').value=S.finalText;$('#letter').textContent=letter();
   renderTplUI();renderPaperOnly(false);runParse(false);renderScores();renderVersions();
@@ -859,7 +860,7 @@ $('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(curText(
 let DL=null;try{window.claude&&window.claude.use&&window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(_){}
 async function save(ext,data){if(DL){try{await DL.save({filename:fname(ext),data});toast('Saved')}catch(e){if(e&&e.code!=='declined')toast('Download unavailable here — use Copy')}return}
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'}));a.download=fname(ext);document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Download started')}catch(_){toast('Download unavailable here — use Copy')}}
-function exportHtml(){const name=(S.vault.find(v=>v.type==='name')||{}).text||'Résumé';return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)} — Résumé</title><style>body{margin:0;background:#eef0ea}${$('#paperCss').textContent}.paper{max-width:820px;margin:24px auto;box-shadow:none;min-height:0}@media print{body{background:#fff}.paper{margin:0;border:0;max-width:none;padding:0}@page{margin:16mm}}</style></head><body><div class="${paperClass()}" style="${esc(paperStyle())}">${renderPaper(S.finalText,true)}</div></body></html>`}
+function exportHtml(){const name=(S.vault.find(v=>v.type==='name')||{}).text||'Résumé',margin=S.opts.pages==='1'?'10mm':'16mm';return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)} — Résumé</title><style>body{margin:0;background:#eef0ea}${$('#paperCss').textContent}.paper{max-width:820px;margin:24px auto;box-shadow:none;min-height:0}@media print{body{background:#fff}.paper{margin:0;border:0;max-width:none;padding:0}@page{size:A4;margin:${margin}}}</style></head><body><div class="${paperClass()}" style="${esc(paperStyle())}">${renderPaper(S.finalText,true)}</div></body></html>`}
 $('#txtBtn').onclick=()=>save('txt',curText());
 $('#mdBtn').onclick=()=>save('md',curText().split('\n').map((l,i)=>i===0?'# '+l:isHeading(l)?'\n## '+l.charAt(0)+l.slice(1).toLowerCase():l.replace(/^•\s*/,'- ')).join('\n'));
 $('#htmlBtn').onclick=()=>{if(S.ftab==='letter')return toast('Styled export is for the résumé');save('html',exportHtml())};
