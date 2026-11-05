@@ -399,6 +399,9 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
 .dim .bar i.b{background:var(--fill2)}
 .dim .bar i.a{background:var(--blue)}
 .dim p{margin:4px 0 0;font-size:.75rem;color:var(--label2)}
+.dim .ln{align-items:center}.dim-tools{display:flex;align-items:center;gap:8px}.dim-rec-btn{border:0;background:transparent;color:var(--blue);font-size:.75rem;font-weight:600;padding:4px 7px;border-radius:7px}.dim-rec-btn:hover{background:var(--fill)}
+.dim-rec{margin-top:9px;padding:11px 12px;border-radius:10px;background:var(--card2);box-shadow:inset 0 0 0 .5px var(--sep);display:grid;gap:9px}.dim-rec ul{margin:0;padding-left:18px;display:grid;gap:5px}.dim-rec li{font-size:.8125rem;color:var(--label2)}.dim-rec li b{color:var(--label);font-weight:600}.dim-rec-actions{display:flex;gap:7px;flex-wrap:wrap}.dim-add{display:grid;grid-template-columns:1fr auto;gap:7px}.dim-add textarea{min-height:64px;padding:9px 10px;font-size:.8125rem}.dim-add .btn{align-self:end}.dim-rec-note{font-size:.75rem;color:var(--label2)}
+@media(max-width:620px){.dim-add{grid-template-columns:1fr}.dim-add .btn{justify-self:start}}
 .checks{list-style:none;margin:0;padding:0}
 .checks li{display:grid;grid-template-columns:24px 1fr;gap:10px;font-size:.875rem;padding:9px 0;border-top:.5px solid var(--sep);opacity:0;animation:lineIn .3s var(--ease) forwards}
 .checks li:first-child{border-top:0;padding-top:0}
@@ -1660,12 +1663,25 @@ function score(text,phase){
   return {overall:Math.round(P.reduce((s,p)=>s+p[1]*p[2],0)*100),parts:P.map(p=>({label:p[0],v:Math.round(p[1]*100),detail:p[3]})),cov:cov(nice)};
 }
 const ringH=(v,l)=>`<div class="ring" style="--v:${v};--rc:${v>=85?'var(--green)':v>=70?'var(--orange)':'var(--red)'}"><div><b>${v}</b><span>${l}</span></div></div>`;
+function scoreRecs(i,p){
+  const text=orderedText(S.finalText),n=norm(text),open=S.reqs.filter(r=>statusOf(r)!=='proven'),missing=S.reqs.filter(r=>statusOf(r)==='proven'&&!r.kw.some(k=>n.includes(k))),bullets=text.split('\n').filter(l=>/^\s*[•\-*]\s/.test(l)),noImpact=bullets.filter(l=>!NUMRE.test(l));
+  const list=(xs,f)=>xs.slice(0,4).map(f);
+  if(i===0)return {items:list(open,r=>`<b>${esc(r.label)}</b> — ${statusOf(r)==='gap'?'no verified evidence yet':'evidence is only partial'}`),add:'Add a truthful example with scope, action and outcome. It will be saved as confirmed evidence.',placeholder:'Example: Led [project/team] across [scope], resulting in [verified outcome].',req:open[0]?.id,go:4};
+  if(i===1){const weak=S.reqs.filter(r=>statusOf(r)!=='proven'||r.match==='transferable'||!trusted(recOf(r)));return {items:list(weak,r=>`<b>${esc(r.label)}</b> — ${r.match==='transferable'?'replace transferable proof with a direct example':'confirm or add stronger evidence'}`),add:'Add a direct, verifiable achievement. TruthFit will cite it in the evidence vault.',placeholder:'What did you personally do? Include team/project scope and a verified result.',req:weak[0]?.id,go:2}}
+  if(i===2)return {items:list(missing,r=>`Add the verified vacancy term <b>“${esc(r.kw[0]||r.label)}”</b> using evidence ${esc((recOf(r)||{}).id||'')}`),action:missing.length?'keywords':null,actionLabel:'Add verified terms'};
+  if(i===3)return {items:(S.parse?.checks||[]).filter(c=>c[0]!=='pass').slice(0,4).map(c=>`<b>${esc(c[1])}</b> — ${esc(c[2])}`),action:'parse',actionLabel:'Apply Portal Safe & retest'};
+  if(i===4)return {items:list(noImpact,l=>`Add a verified outcome to “${esc(l.replace(/^\s*[•\-*]\s*/,'' ).slice(0,90))}${l.length>95?'…':''}”`),add:'Add a real metric or outcome. Numbers are accepted only when you provide them here.',placeholder:'Example: Improved [metric] from [before] to [after], or reduced [time/cost] by [verified amount].'};
+  if(i===5){const flags_=authCheck(text);return {items:list(flags_,a=>`<b>${esc(a.k)}</b> — revise “${esc(a.p)}”`),action:flags_.length?'edit':null,actionLabel:'Edit résumé text'} }
+  if(i===6){const miss=S.bench.filter(b=>!b.kw.some(k=>n.includes(k))&&b.status!=='proven');return {items:list(miss,b=>`Show evidence for <b>${esc(b.label)}</b>`),add:miss.length?'Add a benchmark-relevant example you have actually done.':null,placeholder:'Describe the relevant work, scope and result.'}}
+  const unsafe=flags(text),infs=visibleChanges().filter(c=>S.decisions[c.id]==='accepted'&&c.basis==='inference');return {items:[...unsafe.map(x=>`Remove or verify unsupported number <b>${esc(x)}</b>`),...infs.map(c=>`Confirm the inference in <b>${esc(c.title)}</b>`)].slice(0,4),action:(unsafe.length||infs.length)?'review':null,actionLabel:'Review flagged claims'};
+}
+function recHTML(i,p){const r=scoreRecs(i,p),items=r.items.length?r.items:['This dimension is already strong. Keep the current evidence and formatting.'];return `<div class="dim-rec ${S.dimOpen&&S.dimOpen[i]?'':'hide'}" data-rec="${i}"><ul>${items.map(x=>`<li>${x}</li>`).join('')}</ul>${r.add?`<div class="dim-rec-note">${esc(r.add)}</div><div class="dim-add"><textarea data-dim-text="${i}" placeholder="${esc(r.placeholder||'Add verified evidence')}"></textarea><button class="btn primary sm" data-dim-add="${i}" ${r.req?`data-req="${r.req}"`:''}>Add evidence</button></div>`:''}<div class="dim-rec-actions">${r.action?`<button class="btn line sm" data-dim-action="${r.action}" data-i="${i}">${esc(r.actionLabel)}</button>`:''}${r.go?`<button class="btn plain sm" data-dim-go="${r.go}">Open ${r.go===4?'Evidence Map':'Evidence Vault'}</button>`:''}</div></div>`}
 function renderScores(){
   if(!S.finalText)return;const af=score(orderedText(S.finalText),'after'),bf=S.before;S.after=af;
   const band=af.overall>=85?'Application-ready':af.overall>=70?'Nearly there':'Needs more evidence';
   $('#scoreHero').innerHTML=`${ringH(af.overall,'READINESS')}<div><b style="font-size:15px">${band}</b><div class="hint" style="margin:3px 0 0">Up from <b>${bf.overall}</b> for your original résumé. Weights are a prototype hypothesis and shown in full below.</div></div>`;
   $('#jumpScore').textContent=af.overall;
-  $('#dims').innerHTML=af.parts.map((p,i)=>`<div class="dim"><div class="ln"><span>${p.label}</span><span>${bf.parts[i].v} → ${p.v}</span></div><div class="bar"><i class="b" style="width:${bf.parts[i].v}%"></i><i class="a" data-w="${p.v}" style="width:0"></i></div><p>${p.detail}</p></div>`).join('');
+  S.dimOpen=S.dimOpen||{};$('#dims').innerHTML=af.parts.map((p,i)=>`<div class="dim"><div class="ln"><span>${p.label}</span><span class="dim-tools"><span>${bf.parts[i].v} → ${p.v}</span><button class="dim-rec-btn" data-dim-toggle="${i}" aria-expanded="${!!S.dimOpen[i]}">${S.dimOpen[i]?'Hide':'Recommendations'}</button></span></div><div class="bar"><i class="b" style="width:${bf.parts[i].v}%"></i><i class="a" data-w="${p.v}" style="width:0"></i></div><p>${p.detail}</p>${recHTML(i,p)}</div>`).join('');
   requestAnimationFrame(()=>$$('#dims i.a').forEach((el,i)=>setTimeout(()=>el.style.width=el.dataset.w+'%',reduce?0:i*70)));
   // authenticity panel
   const t=orderedText(S.finalText),au=authCheck(t),mr=mirrorRatio(t),bl=t.split('\n').filter(l=>/^\s*[•\-*]\s/.test(l)),noCtx=bl.filter(l=>!/\d|for |across |with /i.test(l)).length;
@@ -1679,6 +1695,16 @@ function renderScores(){
   ];
   $('#authChecks').innerHTML=items.map((c,i)=>`<li class="${c[0]}" style="animation-delay:${reduce?0:i*60}ms"><span class="c">${ic(c[0]==='pass'?'check-fill':'warn-fill')}</span><div><b>${esc(c[1])}</b><small>${esc(c[2])}</small></div></li>`).join('');
 }
+$('#dims').addEventListener('click',e=>{const t=e.target.closest('[data-dim-toggle]'),add=e.target.closest('[data-dim-add]'),act=e.target.closest('[data-dim-action]'),goBtn=e.target.closest('[data-dim-go]');
+  if(t){const i=+t.dataset.dimToggle;S.dimOpen[i]=!S.dimOpen[i];renderScores();return}
+  if(goBtn){go(+goBtn.dataset.dimGo);return}
+  if(add){const i=+add.dataset.dimAdd,ta=$(`[data-dim-text="${i}"]`),v=ta.value.trim();if(words(v)<6)return toast('Add a specific example with at least six words');const rid='A'+(S.vault.filter(x=>x.type==='answer').length+1);S.vault.push({id:rid,type:'answer',text:v,src:'Your answer',confirmed:true,metrics:nums(v)});const req=add.dataset.req&&S.reqs.find(r=>r.id===add.dataset.req);if(req){S.gaps[req.id]={status:'answered',answer:v,rec:rid};req.rec=rid}S.manualFinal=insertInSection(S.finalText.split('\n'),'ADDITIONAL EVIDENCE',polish(v)).join('\n');renderFinal();S.dimOpen[i]=true;toast('Evidence added and score recalculated');return}
+  if(!act)return;const i=+act.dataset.i;
+  if(act.dataset.dimAction==='keywords'){const n=norm(S.finalText),terms=S.reqs.filter(r=>statusOf(r)==='proven'&&trusted(recOf(r))).flatMap(r=>r.kw).filter(k=>k&&!n.includes(k));if(!terms.length)return toast('All verified terms are already present');S.manualFinal=insertInSection(S.finalText.split('\n'),'CORE SKILLS',terms.slice(0,8).map(x=>x.replace(/\b\w/g,c=>c.toUpperCase())).join(' · ')).join('\n');renderFinal();S.dimOpen[i]=true;toast('Verified job terms added and score recalculated')}
+  if(act.dataset.dimAction==='parse'){applyTpl(PRESETS.classic,'classic');runParse(false);renderScores();S.dimOpen[i]=true;toast('Portal Safe applied and parse test rerun')}
+  if(act.dataset.dimAction==='edit'){$('#editToggle').click();$('#finalEdit').focus()}
+  if(act.dataset.dimAction==='review')go(6)
+});
 
 /* =================== Final render, letter, exports, versions =================== */
 function letter(){if(S.aiLetter)return S.aiLetter;const I=S.inputs,name=(S.vault.find(v=>v.type==='name')||{}).text||'',ev=S.reqs.filter(r=>statusOf(r)==='proven'&&r.priority==='must').slice(0,3);
