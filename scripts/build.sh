@@ -10,4 +10,6 @@ cd "$(dirname "$0")/.."
   cat src/app.js
   printf '</script>\n</body>\n</html>\n'
 } > index.html
+mkdir -p public
+cp index.html public/index.html
 echo "Built index.html ($(wc -c < index.html) bytes)"

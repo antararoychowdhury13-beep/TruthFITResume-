@@ -63,9 +63,9 @@
   <div class="sb-label">Account</div>
   <div class="sb-list">
    <button class="sb-row" id="planBtn" aria-haspopup="dialog"><span class="tile tp"><svg class="ic" aria-hidden="true"><use href="#i-card"/></svg></span><span>Plan</span><span class="st-s"><span class="meterdots" id="usageMeter" aria-hidden="true"></span><span id="planLabel">Free</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
-   <button class="sb-row" id="settingsBtn" aria-haspopup="dialog"><span class="tile ts"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></span><span>AI &amp; Privacy</span><span class="st-s"><span id="providerLabel">Opus 5.5</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
+   <button class="sb-row" id="settingsBtn" aria-haspopup="dialog"><span class="tile ts"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></span><span>AI &amp; Privacy</span><span class="st-s"><span id="providerLabel">Connecting</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
   </div>
-  <div class="sb-foot" id="sbFoot">Analysis runs on Claude Opus 5.5 when this page is open in Claude. Elsewhere it falls back to the offline engine.</div>
+  <div class="sb-foot" id="sbFoot">AI analysis runs securely through the TruthFit Cloudflare Worker. Contact details stay hidden when Privacy Shield is on.</div>
  </aside>
 
  <div class="content">
@@ -122,7 +122,7 @@
           <li><span class="n" style="background:#30b0c7"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg></span><div><b>The output is tested</b>Your résumé is parsed back to check nothing was lost.</div></li>
         </ul>
       </div></div>
-      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">Claude Opus 5.5</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
+      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">TruthFit AI</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
       <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Email and phone are removed before anything reaches the AI and restored on export.</div></div>
     </div>
   </div>
@@ -229,7 +229,7 @@
       <div id="finalWrap" class="pv"><div class="scanline" aria-hidden="true"></div><div class="paper" id="paper"></div>
         <textarea id="finalEdit" class="hide" style="min-height:720px;font-family:var(--mono);font-size:.8125rem"></textarea></div>
       <div id="parsedWrap" class="hide"><div class="notice blue" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>This is the plain text an applicant-tracking system extracts from your résumé, in the order it reads it.</div></div><div class="parsed" id="parsedText"></div></div>
-      <div id="letterWrap" class="hide"><div class="letter-tools"><button class="btn primary sm" id="letterAI"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Write with Claude Opus 5.5</button><button class="btn ghost sm hide" id="letterStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button><button class="btn plain sm hide" id="letterReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Use template</button><span class="hint" id="letterNote" style="margin:0"></span></div><div class="paper" id="letter" style="min-height:500px;white-space:pre-wrap"></div></div>
+      <div id="letterWrap" class="hide"><div class="letter-tools"><button class="btn primary sm" id="letterAI"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Write with AI</button><button class="btn ghost sm hide" id="letterStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button><button class="btn plain sm hide" id="letterReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Use template</button><span class="hint" id="letterNote" style="margin:0"></span></div><div class="paper" id="letter" style="min-height:500px;white-space:pre-wrap"></div></div>
     </div>
     <div class="side-stack">
       <div class="card" id="scoreCard"><div class="card-h"><div><h2>Readiness Score</h2><p>Not an employer's ATS score — a transparent estimate across 8 dimensions.</p></div></div><div class="card-b">
@@ -288,10 +288,9 @@
   <div class="sheet-h"><h2 id="setTitle">AI &amp; Privacy</h2><button class="x" data-close aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg></button></div>
   <div class="sheet-b">
     <div><div class="grouped-h">AI model</div><div class="grouped" id="providers">
-      <label class="opt"><input type="radio" name="prov" value="opus" checked><div><b>Claude Opus 5.5 <span class="tag t-low">Live</span></b><span>Runs inside this page on your own Claude account — no API key. The first use asks your permission. Every answer is re-checked by TruthFit's guardrails.</span></div></label>
-      <label class="opt disabled"><input type="radio" name="prov" value="gpt" disabled><div><b>GPT-5.6 Sol <span class="tag t-nice">Working tool</span></b><span>OpenAI's flagship. Needs TruthFit's secure server and an OpenAI API key ($5 / $30 per million tokens) — this page can't call outside servers.</span></div></label>
+      <label class="opt"><input type="radio" name="prov" value="auto" checked><div><b>Best available AI <span class="tag t-low">Live</span></b><span>Uses a model configured securely on the Worker: Anthropic, OpenAI, or Cloudflare Workers AI. No API keys are exposed to the browser.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
-    </div><div class="grouped-f" id="aiStatus">Checking whether Claude is available in this view…</div></div>
+    </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Remove email &amp; phone before sending to the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>
 </div>

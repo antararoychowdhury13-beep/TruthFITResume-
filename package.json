@@ -1,0 +1,8 @@
+{
+  "name": "truthfitresume",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "sh scripts/build.sh", "dev": "wrangler dev", "deploy": "wrangler deploy" },
+  "devDependencies": { "wrangler": "^4.45.0" }
+}

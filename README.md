@@ -4,21 +4,21 @@
 
 TruthFit is a truth-first ATS résumé workspace. It turns a candidate's résumé into a verified *evidence vault*, researches the role, maps every job requirement to real proof, and only proposes changes it can trace back to something the candidate has actually done. Every suggestion is checked for invented numbers, altered facts and generic AI-sounding language before it can be accepted.
 
-Live analysis runs on **Claude Opus 5.5**. The interface follows Apple's Human Interface Guidelines in a white theme.
+Live analysis runs through a secure **Cloudflare Worker** with automatic provider fallback: Anthropic, OpenAI, then Cloudflare Workers AI. The interface follows Apple's Human Interface Guidelines in a white theme.
 
 ---
 
 ## Quick start
 
-No install, no build step, no server.
+For the deployed app:
 
-1. Download or clone this repository.
-2. Open `index.html` in any modern browser (Chrome, Safari, Edge, Firefox).
+1. Install dependencies with `npm install`.
+2. Run `npm run dev` for a local Worker preview.
 3. Click **Load Keka example**, then **Build Evidence Vault**, and step through the seven screens.
 
 To publish it as a website, turn on **GitHub Pages**: open the repository's **Settings → Pages**, set **Source** to *Deploy from a branch*, pick **main** and **/ (root)**, then **Save**. The site appears at `https://<owner>.github.io/<repo>/` within a minute or two.
 
-> **About the AI engine:** live Claude Opus 5.5 analysis works when the page is opened inside Claude (as a Claude artifact), using the viewer's own Claude account with their permission. Opened anywhere else — a local file or GitHub Pages — TruthFit automatically uses its built-in **offline engine** and says so on screen. See [AI engine](#ai-engine) for how to connect a model on your own hosting.
+> **About the AI engine:** the Worker keeps provider keys server-side. Cloudflare Workers AI works through the `AI` binding with no browser key. Optional `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` secrets enable those providers; `AI_PROVIDER_ORDER` controls fallback order.
 
 ---
 
@@ -46,11 +46,12 @@ To publish it as a website, turn on **GitHub Pages**: open the repository's **Se
 
 | Option | Status |
 |---|---|
-| **Claude Opus 5.5** (`claude-opus-5-5`) | Live inside Claude. Produces the classification, requirements, evidence mapping, proposed changes (with Executive/Technical summary variants), gap-interview suggestions and cover letter. Falls back to the offline engine if unavailable, declined or rate-limited. |
-| **GPT-5.6 Sol** | Listed but disabled. A browser page can't call OpenAI directly; it needs a small server that holds an OpenAI API key. |
+| **Anthropic** | Enabled when `ANTHROPIC_API_KEY` is configured. Model is configurable with `ANTHROPIC_MODEL`. |
+| **OpenAI** | Enabled when `OPENAI_API_KEY` is configured. Model is configurable with `OPENAI_MODEL`. |
+| **Cloudflare Workers AI** | Enabled by default through the `AI` binding. Model is configurable with `WORKERS_AI_MODEL`. |
 | **Offline engine** | Always available. Deterministic matching and all guardrails, with no data leaving the browser. |
 
-To run a model on your own hosting, add a small server endpoint (for example a serverless function) that keeps the API key secret, then point the `SAMPLE` call in `src/app.js` at it. The prompt (`aiPrompt()`) and the response mapper (`applyAI()`) are already written and model-agnostic. The guardrails run in the browser regardless of which model answers.
+The Worker endpoint is `POST /api/ai`; model availability is exposed without secrets at `GET /api/models`. The prompt (`aiPrompt()`) and response mapper (`applyAI()`) remain model-agnostic, and the guardrails run in the browser regardless of which model answers.
 
 ## Project structure
 

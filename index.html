@@ -616,9 +616,9 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
   <div class="sb-label">Account</div>
   <div class="sb-list">
    <button class="sb-row" id="planBtn" aria-haspopup="dialog"><span class="tile tp"><svg class="ic" aria-hidden="true"><use href="#i-card"/></svg></span><span>Plan</span><span class="st-s"><span class="meterdots" id="usageMeter" aria-hidden="true"></span><span id="planLabel">Free</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
-   <button class="sb-row" id="settingsBtn" aria-haspopup="dialog"><span class="tile ts"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></span><span>AI &amp; Privacy</span><span class="st-s"><span id="providerLabel">Opus 5.5</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
+   <button class="sb-row" id="settingsBtn" aria-haspopup="dialog"><span class="tile ts"><svg class="ic" aria-hidden="true"><use href="#i-gear"/></svg></span><span>AI &amp; Privacy</span><span class="st-s"><span id="providerLabel">Connecting</span><svg class="ic" aria-hidden="true"><use href="#i-chev-r"/></svg></span></button>
   </div>
-  <div class="sb-foot" id="sbFoot">Analysis runs on Claude Opus 5.5 when this page is open in Claude. Elsewhere it falls back to the offline engine.</div>
+  <div class="sb-foot" id="sbFoot">AI analysis runs securely through the TruthFit Cloudflare Worker. Contact details stay hidden when Privacy Shield is on.</div>
  </aside>
 
  <div class="content">
@@ -675,7 +675,7 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
           <li><span class="n" style="background:#30b0c7"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg></span><div><b>The output is tested</b>Your résumé is parsed back to check nothing was lost.</div></li>
         </ul>
       </div></div>
-      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">Claude Opus 5.5</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
+      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">TruthFit AI</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
       <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Email and phone are removed before anything reaches the AI and restored on export.</div></div>
     </div>
   </div>
@@ -782,7 +782,7 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
       <div id="finalWrap" class="pv"><div class="scanline" aria-hidden="true"></div><div class="paper" id="paper"></div>
         <textarea id="finalEdit" class="hide" style="min-height:720px;font-family:var(--mono);font-size:.8125rem"></textarea></div>
       <div id="parsedWrap" class="hide"><div class="notice blue" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="#i-info"/></svg><div>This is the plain text an applicant-tracking system extracts from your résumé, in the order it reads it.</div></div><div class="parsed" id="parsedText"></div></div>
-      <div id="letterWrap" class="hide"><div class="letter-tools"><button class="btn primary sm" id="letterAI"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Write with Claude Opus 5.5</button><button class="btn ghost sm hide" id="letterStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button><button class="btn plain sm hide" id="letterReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Use template</button><span class="hint" id="letterNote" style="margin:0"></span></div><div class="paper" id="letter" style="min-height:500px;white-space:pre-wrap"></div></div>
+      <div id="letterWrap" class="hide"><div class="letter-tools"><button class="btn primary sm" id="letterAI"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Write with AI</button><button class="btn ghost sm hide" id="letterStop"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg> Stop</button><button class="btn plain sm hide" id="letterReset"><svg class="ic" aria-hidden="true"><use href="#i-undo"/></svg> Use template</button><span class="hint" id="letterNote" style="margin:0"></span></div><div class="paper" id="letter" style="min-height:500px;white-space:pre-wrap"></div></div>
     </div>
     <div class="side-stack">
       <div class="card" id="scoreCard"><div class="card-h"><div><h2>Readiness Score</h2><p>Not an employer's ATS score — a transparent estimate across 8 dimensions.</p></div></div><div class="card-b">
@@ -841,10 +841,9 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
   <div class="sheet-h"><h2 id="setTitle">AI &amp; Privacy</h2><button class="x" data-close aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-xmark"/></svg></button></div>
   <div class="sheet-b">
     <div><div class="grouped-h">AI model</div><div class="grouped" id="providers">
-      <label class="opt"><input type="radio" name="prov" value="opus" checked><div><b>Claude Opus 5.5 <span class="tag t-low">Live</span></b><span>Runs inside this page on your own Claude account — no API key. The first use asks your permission. Every answer is re-checked by TruthFit's guardrails.</span></div></label>
-      <label class="opt disabled"><input type="radio" name="prov" value="gpt" disabled><div><b>GPT-5.6 Sol <span class="tag t-nice">Working tool</span></b><span>OpenAI's flagship. Needs TruthFit's secure server and an OpenAI API key ($5 / $30 per million tokens) — this page can't call outside servers.</span></div></label>
+      <label class="opt"><input type="radio" name="prov" value="auto" checked><div><b>Best available AI <span class="tag t-low">Live</span></b><span>Uses a model configured securely on the Worker: Anthropic, OpenAI, or Cloudflare Workers AI. No API keys are exposed to the browser.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
-    </div><div class="grouped-f" id="aiStatus">Checking whether Claude is available in this view…</div></div>
+    </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Remove email &amp; phone before sending to the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>
 </div>
@@ -884,7 +883,7 @@ const EMAIL=/[\w.+-]+@[\w-]+\.[\w.]+/, PHONE=/\+?\d[\d\s-]{8,}\d/;
 const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const wb=(text,k)=>k.endsWith('*')?new RegExp('\\b'+reEsc(k.slice(0,-1))).test(text):new RegExp('\\b'+reEsc(k)+'\\b').test(text);
 const isHeading=l=>{l=l.trim();return l.length>2&&l.length<42&&l===l.toUpperCase()&&/[A-Z]/.test(l)&&!/\d/.test(l)&&!/^[•\-*]/.test(l)};
-const YEAR=2026, TODAY='5 Nov 2026';
+const YEAR=2026, TODAY='6 Nov 2026';
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(_){return false}}};
 let toastT=null,toastUndo=null;
 function toast(m,undo){const t=$('#toast');$('#toastMsg').textContent=m;toastUndo=undo||null;$('#toastAct').classList.toggle('hide',!undo);t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show');toastUndo=null},undo?4500:2300)}
@@ -986,7 +985,7 @@ const PACKS={
 const SENIORITY=[['Intern / entry',/\b(intern|trainee|graduate|junior|associate)\b/i],['Mid-level',/\b(designer|engineer|analyst|specialist|executive)\b/i],['Senior',/\b(senior|sr\.?)\b/i],['Lead / principal',/\b(lead|principal|staff)\b/i],['Manager (people leader)',/\b(manager|head of)\b/i],['Director +',/\b(director|vp|vice president|chief|cxo)\b/i]];
 
 /* =================== State =================== */
-const S={step:1,maxStep:1,inputs:{},opts:{pages:'2',tone:'balanced'},provider:'opus',shield:true,aiUsed:false,aiModel:'',aiSug:{},aiLetter:null,
+const S={step:1,maxStep:1,inputs:{},opts:{pages:'2',tone:'balanced'},provider:'auto',shield:true,aiUsed:false,aiModel:'',aiSug:{},aiLetter:null,
  vault:[],reqs:[],bench:[],signals:[],cls:{},pack:null,changes:[],mode:'balanced',decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},
  generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null};
 const STEPS=['Import','Evidence Vault','Role Intelligence','Evidence Map','Strategy','Review','Design & Test'];
@@ -1120,18 +1119,23 @@ $('#vaultList').addEventListener('click',e=>{
 $('#confirmAll').onclick=()=>{const prev=S.vault.map(v=>v.confirmed);S.vault.forEach(v=>{if(v.src==='Résumé')v.confirmed=true});renderVault();toast('All résumé records confirmed',()=>{S.vault.forEach((v,i)=>v.confirmed=prev[i]);renderVault()})};
 
 /* =================== Analysis =================== */
-/* =================== Live AI: Claude Opus 5.5 =================== */
-const MODEL='claude-opus-5-5',MODEL_NAME='Claude Opus 5.5';
-let SAMPLE=null,SAMPLE_CHECKED=false;
-try{if(window.claude&&window.claude.use)window.claude.use('sample').then(s=>{SAMPLE=s;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});else SAMPLE_CHECKED=true}catch(_){SAMPLE_CHECKED=true}
-setTimeout(()=>{SAMPLE_CHECKED=true;renderAIStatus()},11000);
-const aiReady=()=>S.provider==='opus'&&!!SAMPLE;
+/* =================== Secure Worker AI =================== */
+let MODEL_NAME='TruthFit AI',SAMPLE=null,SAMPLE_CHECKED=false,AI_MODELS=null;
+async function workerSample(prompt,opts={}){
+  const res=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,provider:S.provider}),signal:opts.signal});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
+  MODEL_NAME=`${data.provider} · ${data.model}`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider};
+}
+fetch('/api/models',{headers:{accept:'application/json'}}).then(async r=>{if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});
+const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
 function renderAIStatus(){
   const live=aiReady(),off=S.provider==='offline';
-  const msg=off?'Offline engine selected — no AI is used.':SAMPLE?`Connected. ${MODEL_NAME} runs on your own Claude account; the first analysis asks your permission.`:SAMPLE_CHECKED?'Live AI needs this page opened inside Claude. The offline engine will be used here.':'Checking whether Claude is available in this view…';
+  const names=AI_MODELS?[AI_MODELS.available.anthropic&&'Anthropic',AI_MODELS.available.openai&&'OpenAI',AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
+  const msg=off?'Offline engine selected — no AI is used.':live?`Connected securely${names.length?` · ${names.join(', ')}`:''}. TruthFit guardrails re-check every answer.`:SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
   $('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':MODEL_NAME;
-  $('#providerLabel').textContent=off?'Offline':live?'Opus 5.5':'Unavailable';
+  $('#providerLabel').textContent=off?'Offline':live?'Live AI':'Unavailable';
   $('#letterAI').classList.toggle('hide',!live);
 }
 const EMAILg=/[\w.+-]+@[\w-]+\.[\w.]+/g,PHONEg=/\+?\d[\d\s-]{8,}\d/g;
@@ -1172,7 +1176,7 @@ function applyAI(j){
   const fam=FAMILIES.find(f=>f[1]===cl.family)||FAMILIES.find(f=>cl.family&&f[1].toLowerCase().startsWith(String(cl.family).toLowerCase().split(/[ ,]/)[0]));
   if(fam){S.cls.family=fam[0];S.cls.familyName=fam[1];S.cls.pack=fam[0]==='spd'?(/design|ux|ui/i.test(S.inputs.role)?'design':'software'):{smc:'sales',ops:'ops',hr:'hr'}[fam[0]]||null;S.pack=PACKS[S.cls.pack]||null}
   const si=SENIORITY.findIndex(s=>s[0]===cl.seniority);if(si>-1){S.cls.seniorIdx=si;S.cls.seniority=SENIORITY[si][0]}
-  if(cl.function)S.cls.fn=String(cl.function);if(cl.industry)S.cls.industry=String(cl.industry);S.cls.conf=MODEL_NAME;
+  if(cl.function)S.cls.fn=String(cl.function);if(cl.industry)S.cls.industry=String(cl.industry);S.cls.conf='AI';
   S.reqs=j.requirements.slice(0,18).map((r,i)=>{const rid=ids.has(r.evidenceId)?r.evidenceId:null,st=['proven','partial','gap'].includes(r.status)?r.status:'gap',x=rid?rec(rid):null;
     return {id:'q'+i,label:String(r.label||'Requirement').slice(0,90),priority:r.priority==='nice'?'nice':'must',status:x?st:'gap',match:x?(r.match==='transferable'?'transferable':'direct'):null,gate:['Credential gate','Experience gate','Legal gate'].includes(r.gate)?r.gate:null,
       kw:(Array.isArray(r.kw)?r.kw:[]).map(k=>norm(k)).filter(Boolean).slice(0,2),ev:x?x.text:'',rec:rid,note:r.note||'',question:r.question||`Do you have direct experience with “${r.label}”? Describe one example — what you did, the scope and the result.`}});
@@ -1211,7 +1215,7 @@ async function startAnalysis(){
     [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>flags(c.after).length||c.lock).length} changes flagged`]
   ];
   $('#stages').innerHTML=stagesDef.map((s,i)=>`<li class="stage" data-i="${i}"><span class="ico2">${ic('circle')}</span><span>${esc(s[0])}</span><small></small></li>`).join('');
-  $('#ovNote').textContent=useAI?`Running on ${MODEL_NAME} with your Claude account. This usually takes 30–90 seconds.`:SAMPLE_CHECKED&&S.provider==='opus'?'Live AI isn\'t available in this view, so the offline engine is running.':'Offline engine — no AI is used.';
+  $('#ovNote').textContent=useAI?'Running securely through the TruthFit Worker. This usually takes 15–90 seconds.':SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
   const d=reduce?0:1,done=(i)=>{const li=$(`.stage[data-i="${i}"]`);li.classList.remove('active');li.classList.add('done');li.querySelector('.ico2').innerHTML=ic('check-fill');li.querySelector('small').textContent=stagesDef[i][1]();$('#ovBar').style.width=((i+1)/stagesDef.length*100)+'%'};
   const act=i=>$(`.stage[data-i="${i}"]`).classList.add('active');
   for(const i of [0,1]){act(i);if(i===1)$$('#cloudB .frag').forEach((f,j)=>setTimeout(()=>f.classList.add('in'),j*50*d));await sleep(reduce?80:500);done(i)}
@@ -1220,12 +1224,12 @@ async function startAnalysis(){
     const ctl=new AbortController();S.aiCtl=ctl;$('#ovStop').classList.remove('hide');$('#ovStream').classList.remove('hide');$('#ovStream').textContent='Thinking…';
     $('#ovStop').onclick=()=>ctl.abort();
     try{
-      const res=await SAMPLE(aiPrompt(),{model:MODEL,modelTier:'complex',effort:'medium',signal:ctl.signal,cache:{gcTime:900000},onText:({text})=>{$('#ovStream').textContent=text.slice(-260);$('#ovTitle').textContent=`${MODEL_NAME} is writing… ${Math.round(text.length/100)/10}k characters`}});
-      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=res.modelApplied===MODEL?MODEL_NAME:`Claude (${res.modelTierApplied} tier — Opus 5.5 wasn't available on this plan)`;S.generic=false;
+      const res=await SAMPLE(aiPrompt(),{signal:ctl.signal,onText:({text})=>{$('#ovStream').textContent=text.slice(-260);$('#ovTitle').textContent=`TruthFit AI is writing… ${Math.round(text.length/100)/10}k characters`}});
+      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=`${res.provider} · ${res.modelApplied}`;S.generic=false;
     }catch(e){
       offline();const c=e&&e.code;
       toast(c==='cancelled'?'Stopped — using the offline engine':c==='not_granted'?'Claude access wasn\'t allowed — using the offline engine':c==='rate_limited'?'Claude usage limit reached — using the offline engine for now':'The AI answer couldn\'t be used — falling back to the offline engine');
-      if(c==='not_granted'||c==='sampling_disabled'){SAMPLE=null;renderAIStatus()}
+      if(c==='service_error'){renderAIStatus()}
     }finally{$('#ovStop').classList.add('hide');$('#ovStream').classList.add('hide')}
   }else{offline();await sleep(reduce?80:600)}
   S.bench=buildBench();S.mode=recommendedMode();
@@ -1272,7 +1276,7 @@ function renderRole(){
    <div class="cls"><div class="k">Industry</div><input type="text" id="cInd" value="${esc(c.industry)}" placeholder="Not detected — add it" aria-label="Industry"></div>
    <div class="cls"><div class="k">Geography</div><input type="text" value="${esc(c.geo)}" disabled aria-label="Geography"></div>
    <div class="cls"><div class="k">Benchmark pack</div><input type="text" value="${esc(S.pack?S.pack.name:'None yet — vacancy-only analysis')}" disabled aria-label="Benchmark pack"></div>`;
-  $('#clsConf').textContent=c.conf===MODEL_NAME?`Classified by ${MODEL_NAME}`:`${c.conf} confidence`;$('#clsConf').className='tag '+(c.conf==='High'||c.conf===MODEL_NAME?'t-ok':c.conf==='Medium'?'t-med':'t-high');
+  $('#clsConf').textContent=c.conf==='AI'?`Classified by ${S.aiModel||'TruthFit AI'}`:`${c.conf} confidence`;$('#clsConf').className='tag '+(c.conf==='High'||c.conf==='AI'?'t-ok':c.conf==='Medium'?'t-med':'t-high');
   $('#packNote').textContent=S.pack?'Role packs are modelled on public occupation frameworks (O*NET, ESCO). This prototype ships 5 packs; the working tool expands to 12 families.':'No benchmark pack for this family yet. TruthFit will rely on the vacancy only — which is always the primary source anyway.';
   const items=[
     ...S.signals.filter(s=>!s.infer).map(s=>({...s,type:s.type})),
@@ -1721,9 +1725,9 @@ Rules: use ONLY facts from the evidence below — never invent numbers, employer
 TOP REQUIREMENTS: ${S.reqs.filter(r=>r.priority==='must').slice(0,6).map(r=>r.label).join('; ')}
 EVIDENCE:\n${facts}
 COMPANY SIGNALS:\n${sig}`;
-  try{const res=await SAMPLE(prompt,{model:MODEL,modelTier:'complex',effort:'low',signal:ctl.signal,cache:false,onText:({text})=>{el.textContent=text;$('#letterNote').textContent='Writing…'}});
+  try{const res=await SAMPLE(prompt,{signal:ctl.signal,onText:({text})=>{el.textContent=text;$('#letterNote').textContent='Writing…'}});
     S.aiLetter=res.text.trim();el.textContent=S.aiLetter;const f=flags(S.aiLetter),au=authCheck(S.aiLetter);
-    $('#letterNote').textContent=f.length?`Check: ${f.join(', ')} not found in your vault — edit before sending.`:au.length?`Written by ${res.modelApplied===MODEL?MODEL_NAME:'Claude'} · ${au.length} authenticity flag${au.length>1?'s':''}: ${au.map(x=>x.p).join(', ')}`:`Written by ${res.modelApplied===MODEL?MODEL_NAME:'Claude'} · every number checked against your vault`;
+    $('#letterNote').textContent=f.length?`Check: ${f.join(', ')} not found in your vault — edit before sending.`:au.length?`Written by ${res.provider} · ${au.length} authenticity flag${au.length>1?'s':''}: ${au.map(x=>x.p).join(', ')}`:`Written by ${res.provider} · every number checked against your vault`;
     $('#letterReset').classList.remove('hide');
   }catch(e){S.aiLetter=prev;el.textContent=e.text&&e.code==='cancelled'?e.text:letter();$('#letterNote').textContent=e.code==='cancelled'?'Stopped.':e.code==='not_granted'?'Claude access wasn\'t allowed.':e.code==='rate_limited'?'Usage limit reached — try later.':'Couldn\'t write the letter — try again.'}
   finally{$('#letterAI').disabled=false;$('#letterStop').classList.add('hide')}
