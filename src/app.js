@@ -260,17 +260,19 @@ async function workerSample(prompt,opts={}){
   const res=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,provider:S.provider}),signal:opts.signal});
   const data=await res.json().catch(()=>({}));
   if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
-  MODEL_NAME=`${data.provider} · ${data.model}`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider};
+  MODEL_NAME=modelDisplay(data.provider,data.model);const note=$('#ovNote');if(note)note.textContent=`Model: ${MODEL_NAME} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider};
 }
 fetch('/api/models',{headers:{accept:'application/json'}}).then(async r=>{if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});
 const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
+function modelDisplay(provider,model){const m=String(model||'');if(/qwen3\.8-27b/i.test(m))return 'Qwen 3.8 27B · Cloudflare Workers AI';if(/kimi-k2\.7/i.test(m))return 'Kimi K2.7 · Cloudflare Workers AI';if(/llama-3\.3-70b/i.test(m))return 'Llama 3.3 70B · Cloudflare Workers AI';if(/claude-opus-5/i.test(m))return 'Claude Opus 5 · Anthropic';if(/^gpt-5\.6/i.test(m))return 'GPT-5.6 · OpenAI';return [provider,m].filter(Boolean).join(' · ')||'TruthFit AI'}
+function selectedModel(){if(S.provider==='offline')return 'Offline engine';if(!AI_MODELS)return 'TruthFit AI';let p=S.provider;if(p==='auto'){const order=String(AI_MODELS.default||'').split(',');p=order.find(x=>AI_MODELS.available[x==='workers'?'workersAi':x])||'workers'}const key=p==='workersAi'?'workers':p;return modelDisplay('',AI_MODELS.models&&AI_MODELS.models[key])}
 function renderAIStatus(){
   const live=aiReady(),off=S.provider==='offline';
   const names=AI_MODELS?[AI_MODELS.available.anthropic&&'Anthropic',AI_MODELS.available.openai&&'OpenAI',AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
   const msg=off?'Offline engine selected — no AI is used.':live?`Connected securely${names.length?` · ${names.join(', ')}`:''}. TruthFit guardrails re-check every answer.`:SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
-  $('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':MODEL_NAME;
-  $('#providerLabel').textContent=off?'Offline':live?'Live AI':'Unavailable';
+  const selected=selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
+  $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`Active model: ${selected}. Privacy Shield hides contact details.`:'AI unavailable · the offline engine will be used.';
   $('#letterAI').classList.toggle('hide',!live);
   if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=!!AI_MODELS.available[row.dataset.provider];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }
@@ -339,19 +341,19 @@ async function startAnalysis(){
   bumpUsage();
   const useAI=aiReady();
   // overlay
-  const ov=$('#overlay');ov.classList.remove('hide');$('#pulse').classList.add('run');$('#ovTitle').textContent=useAI?`${MODEL_NAME} is reading your evidence…`:'Assembling your evidence…';$('#ovBar').style.width='0';$('#bridge').classList.remove('live');$('#ovStream').classList.add('hide');$('#ovStream').textContent='';
+  const activeModel=selectedModel(),ov=$('#overlay');ov.classList.remove('hide');$('#pulse').classList.add('run');$('#ovTitle').textContent=useAI?`${activeModel} is reading your evidence…`:'Assembling your evidence…';$('#ovBar').style.width='0';$('#bridge').classList.remove('live');$('#ovStream').classList.add('hide');$('#ovStream').textContent='';
   const B=S.vault.filter(v=>['ach','extra','summary','tools','edu'].includes(v.type)).slice(0,12);
   $('#cloudB').innerHTML='<span class="k">Your evidence</span>'+B.map(v=>{const l=v.text.split(/[,.]/)[0];return `<span class="frag">${v.id} · ${esc(l.length>26?l.slice(0,24)+'…':l)}</span>`}).join('');
   const stagesDef=[
     ['Privacy shield',()=>S.shield?`${S.pii.email} email, ${S.pii.phone} phone hidden`:'Off'],
     ['Extracting résumé into evidence records',()=>`${S.vault.length} records · ${S.vault.filter(v=>v.locked).length} locked facts`],
-    [useAI?`${MODEL_NAME}: reading the vacancy & your vault`:'Classifying role, seniority & industry',()=>`${S.cls.fn} · ${S.cls.seniority}${S.cls.industry?' · '+S.cls.industry:''}`],
+    [useAI?`${activeModel}: reading the vacancy & your vault`:'Classifying role, seniority & industry',()=>`${S.cls.fn} · ${S.cls.seniority}${S.cls.industry?' · '+S.cls.industry:''}`],
     ['Loading role benchmark pack',()=>S.pack?S.pack.name:'No pack yet — vacancy only'],
     ['Company research',()=>S.signals.length?`${S.signals.length} cited insights`:'Live web research runs in the working tool'],
     [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>flags(c.after).length||c.lock).length} changes flagged`]
   ];
   $('#stages').innerHTML=stagesDef.map((s,i)=>`<li class="stage" data-i="${i}"><span class="ico2">${ic('circle')}</span><span>${esc(s[0])}</span><small></small></li>`).join('');
-  $('#ovNote').textContent=useAI?'Running securely through the TruthFit Worker. This usually takes 15–90 seconds.':SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
+  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 15–90 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
   const d=reduce?0:1,done=(i)=>{const li=$(`.stage[data-i="${i}"]`);li.classList.remove('active');li.classList.add('done');li.querySelector('.ico2').innerHTML=ic('check-fill');li.querySelector('small').textContent=stagesDef[i][1]();$('#ovBar').style.width=((i+1)/stagesDef.length*100)+'%'};
   const act=i=>$(`.stage[data-i="${i}"]`).classList.add('active');
   for(const i of [0,1]){act(i);if(i===1)$$('#cloudB .frag').forEach((f,j)=>setTimeout(()=>f.classList.add('in'),j*50*d));await sleep(reduce?80:500);done(i)}
