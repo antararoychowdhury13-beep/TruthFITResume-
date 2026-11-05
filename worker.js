@@ -47,7 +47,8 @@ async function runWorkersAI(prompt, env, requested = "workers") {
   };
   const model = models[requested] || models.workers;
   const data = await env.AI.run(model, { messages: [{ role: "system", content: "Return exactly the requested format. Be factual and concise." }, { role: "user", content: prompt }], max_tokens: 8000, temperature: 0.2 });
-  const output = typeof data === "string" ? data : data.response;
+  const output = typeof data === "string" ? data : data.response ?? data.output_text ?? data.choices?.[0]?.message?.content ?? data.result?.response;
+  if (output == null) throw new Error(`Unexpected response shape from ${model}`);
   const label = requested === "qwen" ? "Qwen via Workers AI" : requested === "kimi" ? "Kimi via Workers AI" : "Cloudflare Workers AI";
   return { text: typeof output === "string" ? output : JSON.stringify(output), model, provider: label };
 }
