@@ -40,7 +40,8 @@ async function runOpenAI(prompt, env) {
 async function runWorkersAI(prompt, env) {
   const model = env.WORKERS_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
   const data = await env.AI.run(model, { messages: [{ role: "system", content: "Return exactly the requested format. Be factual and concise." }, { role: "user", content: prompt }], max_tokens: 8000, temperature: 0.2 });
-  return { text: typeof data === "string" ? data : data.response, model, provider: "Cloudflare Workers AI" };
+  const output = typeof data === "string" ? data : data.response;
+  return { text: typeof output === "string" ? output : JSON.stringify(output), model, provider: "Cloudflare Workers AI" };
 }
 
 async function runAI(prompt, requested, env) {
