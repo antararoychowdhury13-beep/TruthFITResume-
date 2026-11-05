@@ -289,6 +289,10 @@
   <div class="sheet-b">
     <div><div class="grouped-h">AI model</div><div class="grouped" id="providers">
       <label class="opt"><input type="radio" name="prov" value="auto" checked><div><b>Best available AI <span class="tag t-low">Live</span></b><span>Uses a model configured securely on the Worker: Anthropic, OpenAI, or Cloudflare Workers AI. No API keys are exposed to the browser.</span></div></label>
+      <label class="opt" data-provider="anthropic"><input type="radio" name="prov" value="anthropic"><div><b>Claude Opus 5 <span class="tag t-nice">API key</span></b><span>Anthropic's current Opus API model. Available when ANTHROPIC_API_KEY is configured on the Worker.</span></div></label>
+      <label class="opt" data-provider="openai"><input type="radio" name="prov" value="openai"><div><b>OpenAI GPT <span class="tag t-nice">API key</span></b><span>Uses the OpenAI model configured in OPENAI_MODEL. Available when OPENAI_API_KEY is configured on the Worker.</span></div></label>
+      <label class="opt" data-provider="qwen"><input type="radio" name="prov" value="qwen"><div><b>Qwen 3.8 27B <span class="tag t-low">Live</span></b><span>Strong reasoning and long-context analysis through Cloudflare Workers AI.</span></div></label>
+      <label class="opt" data-provider="kimi"><input type="radio" name="prov" value="kimi"><div><b>Kimi K2.7 <span class="tag t-low">Live</span></b><span>Frontier-scale Moonshot model through Cloudflare Workers AI; availability depends on the Workers plan.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
     </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Remove email &amp; phone before sending to the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>

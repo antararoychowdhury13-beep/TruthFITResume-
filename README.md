@@ -46,9 +46,11 @@ To publish it as a website, turn on **GitHub Pages**: open the repository's **Se
 
 | Option | Status |
 |---|---|
-| **Anthropic** | Enabled when `ANTHROPIC_API_KEY` is configured. Model is configurable with `ANTHROPIC_MODEL`. |
-| **OpenAI** | Enabled when `OPENAI_API_KEY` is configured. Model is configurable with `OPENAI_MODEL`. |
-| **Cloudflare Workers AI** | Enabled by default through the `AI` binding. Model is configurable with `WORKERS_AI_MODEL`. |
+| **Claude Opus 5** | Enabled when `ANTHROPIC_API_KEY` is configured. Override with `ANTHROPIC_MODEL`. |
+| **OpenAI GPT** | Enabled when `OPENAI_API_KEY` is configured. The requested account model is set with `OPENAI_MODEL`. |
+| **Qwen 3.8 27B** | Available through the Workers AI binding as `@cf/qwen/qwen3.8-27b`. |
+| **Kimi K2.7** | Available on eligible Workers plans as `@cf/moonshotai/kimi-k2.7-code`. |
+| **Llama 3.3 70B** | Default Workers AI fallback; configurable with `WORKERS_AI_MODEL`. |
 | **Offline engine** | Always available. Deterministic matching and all guardrails, with no data leaving the browser. |
 
 The Worker endpoint is `POST /api/ai`; model availability is exposed without secrets at `GET /api/models`. The prompt (`aiPrompt()`) and response mapper (`applyAI()`) remain model-agnostic, and the guardrails run in the browser regardless of which model answers.

@@ -272,6 +272,7 @@ function renderAIStatus(){
   $('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':MODEL_NAME;
   $('#providerLabel').textContent=off?'Offline':live?'Live AI':'Unavailable';
   $('#letterAI').classList.toggle('hide',!live);
+  if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=!!AI_MODELS.available[row.dataset.provider];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }
 const EMAILg=/[\w.+-]+@[\w-]+\.[\w.]+/g,PHONEg=/\+?\d[\d\s-]{8,}\d/g;
 const shieldT=t=>S.shield?t.replace(EMAILg,'[email hidden]').replace(PHONEg,'[phone hidden]'):t;

@@ -9,11 +9,13 @@ function available(env) {
     anthropic: Boolean(env.ANTHROPIC_API_KEY),
     openai: Boolean(env.OPENAI_API_KEY),
     workersAi: Boolean(env.AI),
+    qwen: Boolean(env.AI),
+    kimi: Boolean(env.AI),
   };
 }
 
 async function runAnthropic(prompt, env) {
-  const model = env.ANTHROPIC_MODEL || "claude-sonnet-4-5-20250929";
+  const model = env.ANTHROPIC_MODEL || "claude-opus-5";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
@@ -25,7 +27,7 @@ async function runAnthropic(prompt, env) {
 }
 
 async function runOpenAI(prompt, env) {
-  const model = env.OPENAI_MODEL || "gpt-5-mini";
+  const model = env.OPENAI_MODEL || "gpt-5.6";
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_API_KEY}` },
@@ -37,21 +39,27 @@ async function runOpenAI(prompt, env) {
   return { text, model, provider: "OpenAI" };
 }
 
-async function runWorkersAI(prompt, env) {
-  const model = env.WORKERS_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+async function runWorkersAI(prompt, env, requested = "workers") {
+  const models = {
+    qwen: env.QWEN_MODEL || "@cf/qwen/qwen3.8-27b",
+    kimi: env.KIMI_MODEL || "@cf/moonshotai/kimi-k2.7-code",
+    workers: env.WORKERS_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  };
+  const model = models[requested] || models.workers;
   const data = await env.AI.run(model, { messages: [{ role: "system", content: "Return exactly the requested format. Be factual and concise." }, { role: "user", content: prompt }], max_tokens: 8000, temperature: 0.2 });
   const output = typeof data === "string" ? data : data.response;
-  return { text: typeof output === "string" ? output : JSON.stringify(output), model, provider: "Cloudflare Workers AI" };
+  const label = requested === "qwen" ? "Qwen via Workers AI" : requested === "kimi" ? "Kimi via Workers AI" : "Cloudflare Workers AI";
+  return { text: typeof output === "string" ? output : JSON.stringify(output), model, provider: label };
 }
 
 async function runAI(prompt, requested, env) {
-  const order = requested && requested !== "auto" ? [requested] : String(env.AI_PROVIDER_ORDER || "anthropic,openai,workers").split(",").map(x => x.trim());
+  const order = requested && requested !== "auto" ? [requested] : String(env.AI_PROVIDER_ORDER || "anthropic,openai,qwen,kimi,workers").split(",").map(x => x.trim());
   const errors = [];
   for (const provider of order) {
     try {
       if (provider === "anthropic" && env.ANTHROPIC_API_KEY) return await runAnthropic(prompt, env);
       if (provider === "openai" && env.OPENAI_API_KEY) return await runOpenAI(prompt, env);
-      if ((provider === "workers" || provider === "workersAi") && env.AI) return await runWorkersAI(prompt, env);
+      if (["workers","workersAi","qwen","kimi"].includes(provider) && env.AI) return await runWorkersAI(prompt, env, provider === "workersAi" ? "workers" : provider);
     } catch (error) { errors.push(error.message); }
   }
   throw new Error(errors.join("; ") || "No AI provider is configured");
@@ -60,7 +68,17 @@ async function runAI(prompt, requested, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/api/models" && request.method === "GET") return json({ available: available(env), default: env.AI_PROVIDER_ORDER || "anthropic,openai,workers" });
+    if (url.pathname === "/api/models" && request.method === "GET") return json({
+      available: available(env),
+      default: env.AI_PROVIDER_ORDER || "anthropic,openai,qwen,kimi,workers",
+      models: {
+        anthropic: env.ANTHROPIC_MODEL || "claude-opus-5",
+        openai: env.OPENAI_MODEL || "gpt-5.6",
+        qwen: env.QWEN_MODEL || "@cf/qwen/qwen3.8-27b",
+        kimi: env.KIMI_MODEL || "@cf/moonshotai/kimi-k2.7-code",
+        workers: env.WORKERS_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+      }
+    });
     if (url.pathname === "/api/ai" && request.method === "POST") {
       try {
         const body = await request.json();
