@@ -10,7 +10,7 @@ function available(env) {
     openai: Boolean(env.OPENAI_API_KEY),
     workersAi: Boolean(env.AI),
     qwen: Boolean(env.AI),
-    kimi: Boolean(env.AI),
+    kimi: Boolean(env.AI && env.ENABLE_KIMI === "true"),
   };
 }
 
@@ -60,7 +60,8 @@ async function runAI(prompt, requested, env) {
     try {
       if (provider === "anthropic" && env.ANTHROPIC_API_KEY) return await runAnthropic(prompt, env);
       if (provider === "openai" && env.OPENAI_API_KEY) return await runOpenAI(prompt, env);
-      if (["workers","workersAi","qwen","kimi"].includes(provider) && env.AI) return await runWorkersAI(prompt, env, provider === "workersAi" ? "workers" : provider);
+      if (provider === "kimi" && env.AI && env.ENABLE_KIMI === "true") return await runWorkersAI(prompt, env, "kimi");
+      if (["workers","workersAi","qwen"].includes(provider) && env.AI) return await runWorkersAI(prompt, env, provider === "workersAi" ? "workers" : provider);
     } catch (error) { errors.push(error.message); }
   }
   throw new Error(errors.join("; ") || "No AI provider is configured");
@@ -72,6 +73,7 @@ export default {
     if (url.pathname === "/api/models" && request.method === "GET") return json({
       available: available(env),
       default: env.AI_PROVIDER_ORDER || "anthropic,openai,qwen,kimi,workers",
+      notes: { kimi: env.ENABLE_KIMI === "true" ? "enabled" : "Set ENABLE_KIMI=true after enabling paid Workers AI access" },
       models: {
         anthropic: env.ANTHROPIC_MODEL || "claude-opus-5",
         openai: env.OPENAI_MODEL || "gpt-5.6",

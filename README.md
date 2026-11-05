@@ -49,7 +49,7 @@ To publish it as a website, turn on **GitHub Pages**: open the repository's **Se
 | **Claude Opus 5** | Enabled when `ANTHROPIC_API_KEY` is configured. Override with `ANTHROPIC_MODEL`. |
 | **OpenAI GPT** | Enabled when `OPENAI_API_KEY` is configured. The requested account model is set with `OPENAI_MODEL`. |
 | **Qwen 3.8 27B** | Available through the Workers AI binding as `@cf/qwen/qwen3.8-27b`. |
-| **Kimi K2.7** | Available on eligible Workers plans as `@cf/moonshotai/kimi-k2.7-code`. |
+| **Kimi K2.7** | Integrated as `@cf/moonshotai/kimi-k2.7-code`; set `ENABLE_KIMI=true` after enabling an eligible paid Workers plan. |
 | **Llama 3.3 70B** | Default Workers AI fallback; configurable with `WORKERS_AI_MODEL`. |
 | **Offline engine** | Always available. Deterministic matching and all guardrails, with no data leaving the browser. |
 
