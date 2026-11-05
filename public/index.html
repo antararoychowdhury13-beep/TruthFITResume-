@@ -1664,7 +1664,7 @@ function score(text,phase){
 }
 const ringH=(v,l)=>`<div class="ring" style="--v:${v};--rc:${v>=85?'var(--green)':v>=70?'var(--orange)':'var(--red)'}"><div><b>${v}</b><span>${l}</span></div></div>`;
 function scoreRecs(i,p){
-  const text=orderedText(S.finalText),n=norm(text),open=S.reqs.filter(r=>statusOf(r)!=='proven'),missing=S.reqs.filter(r=>statusOf(r)==='proven'&&!r.kw.some(k=>n.includes(k))),bullets=text.split('\n').filter(l=>/^\s*[•\-*]\s/.test(l)),noImpact=bullets.filter(l=>!NUMRE.test(l));
+  const text=orderedText(S.finalText),n=norm(text),open=S.reqs.filter(r=>statusOf(r)!=='proven'),missing=S.reqs.filter(r=>statusOf(r)==='proven'&&!r.kw.some(k=>n.includes(k))),bullets=text.split('\n').filter(l=>/^\s*[•\-*]\s/.test(l)),noImpact=bullets.filter(l=>!/\d|\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve|dozen|hundred|thousand|half|double|twice)\b/i.test(l));
   const list=(xs,f)=>xs.slice(0,4).map(f);
   if(i===0)return {items:list(open,r=>`<b>${esc(r.label)}</b> — ${statusOf(r)==='gap'?'no verified evidence yet':'evidence is only partial'}`),add:'Add a truthful example with scope, action and outcome. It will be saved as confirmed evidence.',placeholder:'Example: Led [project/team] across [scope], resulting in [verified outcome].',req:open[0]?.id,go:4};
   if(i===1){const weak=S.reqs.filter(r=>statusOf(r)!=='proven'||r.match==='transferable'||!trusted(recOf(r)));return {items:list(weak,r=>`<b>${esc(r.label)}</b> — ${r.match==='transferable'?'replace transferable proof with a direct example':'confirm or add stronger evidence'}`),add:'Add a direct, verifiable achievement. TruthFit will cite it in the evidence vault.',placeholder:'What did you personally do? Include team/project scope and a verified result.',req:weak[0]?.id,go:2}}
