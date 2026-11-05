@@ -172,7 +172,7 @@ const F=['company','role','jd','resume','extra','links'];
 function readInputs(){F.forEach(k=>S.inputs[k]=$('#'+k).value.trim());S.inputs.region=$('#region').value}
 function valid(){readInputs();return !!(S.inputs.company&&S.inputs.role&&S.inputs.jd.length>40&&S.inputs.resume.length>80)}
 F.forEach(k=>$('#'+k).addEventListener('input',()=>S.step===1&&renderBar()));
-$('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar();toast('Keka example loaded')};
+$('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar();toast('Sample example loaded — replace it with your own application details')};
 $$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v}));
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
