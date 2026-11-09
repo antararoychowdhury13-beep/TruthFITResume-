@@ -122,7 +122,7 @@ const SENIORITY=[['Intern / entry',/\b(intern|trainee|graduate|junior|associate)
 /* =================== State =================== */
 const S={step:1,maxStep:1,inputs:{},opts:{pages:'detail',tone:'balanced'},provider:'auto',shield:true,aiUsed:false,aiModel:'',aiSug:{},aiLetter:null,
  vault:[],reqs:[],bench:[],signals:[],cls:{},pack:null,changes:[],mode:'balanced',decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},
- generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null,running:false,stale:false,analysisSignature:'',exported:false,aiFallback:''};
+ generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null,running:false,stale:false,analysisSignature:'',exported:false,aiFallback:'',creationMode:'advanced',workflow:'single',batchIndex:-1};
 const STEPS=['Import','Evidence Vault','Role Intelligence','Evidence Map','Strategy','Review','Design & Test'];
 const STEP_ICONS=['doc','tray','scope','checklist','sliders','review','viewfinder'];
 
@@ -136,6 +136,7 @@ function renderStepper(){
 }
 function go(n){
   const back=n<S.step;S.step=n;S.maxStep=Math.max(S.maxStep,n);
+  if(n===7&&S.workflow==='bulk'&&S.batchIndex>-1&&BATCH[S.batchIndex]){BATCH[S.batchIndex].status='complete';BATCH[S.batchIndex].note='Design & Test complete'}
   $$('.view').forEach(v=>{v.classList.toggle('hide',+v.dataset.step!==n);v.classList.toggle('back',back)});
   renderStepper();
   ({2:renderVault,3:renderRole,4:renderMap,5:renderModes,6:renderChanges,7:renderFinal}[n]||(()=>{}))();
@@ -146,6 +147,8 @@ const NEXT={1:'Build Evidence Vault',2:'Review Role Intelligence',3:'Map My Evid
 function renderBar(){
   const b=$('#backBtn'),nx=$('#nextBtn'),m=$('#barMsg');
   b.classList.toggle('hide',S.step===1);nx.textContent=NEXT[S.step];
+  if(S.step===1&&S.creationMode==='simple')nx.textContent='Create my tailored résumé';
+  if(S.step===1&&S.creationMode==='advanced'&&S.workflow==='bulk'&&S.batchIndex<0)nx.textContent='Open an application';
   let t='';
   if(S.step===1)t=valid()?'Ready — we\'ll extract, classify and research in one pass.':'Add company, role, job description and résumé to continue.';
   if(S.step===2){const u=S.vault.filter(v=>v.type!=='name'&&v.type!=='contact'&&!v.confirmed).length;t=u?`${u} records not yet confirmed — you can continue and confirm later.`:'Every record confirmed. Nice.'}
@@ -162,6 +165,7 @@ $('#navBack').onclick=()=>go(Math.max(1,S.step-1));
 $('#navTitle').onclick=()=>openSheet('#stepsSheet');
 $('#backBtn').onclick=()=>go(Math.max(1,S.step-1));
 $('#nextBtn').onclick=()=>{
+  if(S.step===1&&S.creationMode==='advanced'&&S.workflow==='bulk'&&S.batchIndex<0)return toast('Prepare the batch, then open an application to start its lifecycle');
   if(S.step===1)return startAnalysis();
   if(S.step===7){openSheet('#resetSheet');return}
   go(S.step+1);
@@ -169,6 +173,16 @@ $('#nextBtn').onclick=()=>{
 
 /* =================== Step 1: inputs =================== */
 const F=['company','role','jd','resume','extra','links'];
+function renderCreationMode(){
+  $$('[data-creation]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.creation===S.creationMode));
+  $('#workflowSwitch').classList.toggle('hide',S.creationMode!=='advanced');
+  $$('[data-workflow]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.workflow===S.workflow));
+  $('#bulkMode').classList.toggle('hide',!(S.creationMode==='advanced'&&S.workflow==='bulk'));
+  $$('.advanced-option').forEach(el=>el.classList.toggle('hide',S.creationMode==='simple'));
+  renderBar();
+}
+$$('[data-creation]').forEach(b=>b.onclick=()=>{S.creationMode=b.dataset.creation;if(S.creationMode==='simple')S.workflow='single';renderCreationMode()});
+$$('[data-workflow]').forEach(b=>b.onclick=()=>{S.workflow=b.dataset.workflow;renderCreationMode()});
 function readInputs(){F.forEach(k=>S.inputs[k]=$('#'+k).value.trim());S.inputs.region=$('#region').value}
 function valid(){readInputs();return !!(S.inputs.company&&S.inputs.role&&S.inputs.jd.length>40&&S.inputs.resume.length>80)}
 function inputSignature(){return F.map(k=>$('#'+k).value.trim()).concat($('#region').value,S.opts.pages,S.opts.tone).join('\u241f')}
@@ -247,15 +261,13 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-remove-fil
 $('#extractJdUrl').onclick=async()=>{const url=$('#jdUrl').value.trim(),b=$('#extractJdUrl');if(!/^https?:\/\//i.test(url))return setMsg('jd','Enter a complete public URL beginning with https://',true);b.disabled=true;setMsg('jd','Reading the public vacancy page…');fileCard('jd',{name:new URL(url).hostname+' vacancy page',size:0},'Linked','Extracting…');try{const r=await fetch('/api/extract-url',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})}),data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Could not read that vacancy page');$('#jd').value=data.text;fileCard('jd',{name:data.title||new URL(data.url).hostname+' vacancy',size:new Blob([data.text]).size},'Ready',`${words(data.text)} words`);setMsg('jd',`✓ Extracted ${words(data.text)} words from ${new URL(data.url).hostname}. Review the description before continuing.`);markStale();renderBar()}catch(e){fileCard('jd',{name:new URL(url).hostname+' vacancy page',size:0},'Could not extract',e.message,true);setMsg('jd',e.message,true)}finally{b.disabled=false}};
 const BATCH=[];let bulkStop=false;
 async function extractVacancyUrl(url){const r=await fetch('/api/extract-url',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})}),data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Could not read the vacancy');return data}
-function renderBulk(){const host=$('#bulkResults');host.innerHTML=BATCH.map((x,i)=>`<div class="bulk-result ${x.status==='ready'?'ok':x.status==='failed'?'fail':''}"><div><b>${i+1}. ${esc(x.title||x.url)}</b><span>${esc(x.note||x.status)}</span></div><div style="display:flex;gap:5px">${x.outputs?Object.keys(x.outputs).map(f=>`<button class="btn plain sm" data-bulk-download="${i}" data-bulk-format="${f}">${f==='1'?'1-page':'Detailed CV'}</button>`).join(''):''}</div></div>`).join('')}
-$('#runBulk').onclick=async()=>{const urls=[...new Set($('#bulkUrls').value.split(/\n+/).map(x=>x.trim()).filter(Boolean))];if(!urls.length)return toast('Add at least one vacancy link');if(urls.length>20)return toast('Bulk mode accepts a maximum of 20 vacancy links');if(words($('#resume').value)<40)return toast('Add your source résumé first');if(S.provider==='offline')return toast('Bulk tailoring needs Qwen, Llama, Claude or OpenAI');bulkStop=false;BATCH.length=0;urls.forEach(url=>BATCH.push({url,status:'queued',title:url,note:'Waiting'}));renderBulk();$('#runBulk').disabled=true;$('#stopBulk').classList.remove('hide');const source=$('#resume').value.trim(),lines=source.split('\n'),firstHeading=lines.findIndex((l,i)=>i>0&&isHeading(l)),header=lines.slice(0,firstHeading<0?Math.min(3,lines.length):firstHeading).filter(Boolean),body=lines.slice(firstHeading<0?0:firstHeading).join('\n'),vault=buildVault(source,$('#extra').value.trim(),$('#links').value.trim()),facts=vault.filter(v=>!['name','contact','link'].includes(v.type)).map(v=>`${v.id}: ${v.type==='role'?`${v.title} — ${v.employer} | ${v.dates}`:v.text}`).join('\n');
-  for(let i=0;i<BATCH.length;i++){if(bulkStop){BATCH.slice(i).forEach(x=>{x.status='stopped';x.note='Stopped'});break}const item=BATCH[i];try{item.status='extracting';item.note='Extracting vacancy';renderBulk();$('#bulkStatus').textContent=`${i+1} of ${BATCH.length}: extracting`;const vac=await extractVacancyUrl(item.url);item.title=vac.title;item.status='analysing';item.note='Tailoring with '+selectedModel().split(' · ')[0];renderBulk();$('#bulkStatus').textContent=`${i+1} of ${BATCH.length}: analysing`;
-      const prompt=`You are the analysis engine of TruthFit. Tailor the BODY of this résumé for the vacancy below using ONLY the verified evidence. Keep every employer, job title, date and qualification exactly unchanged. Never invent a number, tool, credential or claim. Use ATS-readable standard headings and reverse chronology. Region: ${$('#region').value}. ${(REGION_GUIDES[$('#region').value]||REGION_GUIDES.IN).text}\n\nVACANCY:\n${vac.text.slice(0,14000)}\n\nSOURCE BODY:\n${G.shield(body,{hiddenLines:header})}\n\nVERIFIED EVIDENCE:\n${facts.slice(0,22000)}\n\nReply with ONLY one JSON object: {"role":"inferred target role","company":"inferred company","resumeBody":"complete tailored résumé body without name or contact header"}`;
-      const res=await workerSample(prompt),j=parseJSON(res.text);if(!j||typeof j.resumeBody!=='string')throw new Error('The model did not return a usable résumé');const full=header.join('\n')+'\n\n'+j.resumeBody.trim(),sourceNums=new Set(nums(source)),badNums=nums(full).filter(n=>!sourceNums.has(n)),roles=vault.filter(v=>v.type==='role'),locked=[...roles.flatMap(r=>[r.title,r.employer,r.dates]),...vault.filter(v=>v.type==='edu'&&v.locked).map(v=>v.text)].filter(Boolean),missing=locked.filter(f=>!full.includes(f));if(badNums.length||missing.length)throw new Error(badNums.length?'Blocked: the model introduced unsupported numbers':'Blocked: a locked career fact was lost');item.outputs={};if(S.opts.pages==='1'||S.opts.pages==='both')item.outputs['1']=lengthVersion(full,'1');if(S.opts.pages==='detail'||S.opts.pages==='both')item.outputs.detail=lengthVersion(full,'detail');item.status='ready';item.note=`Ready · ${res.provider} · truth checks passed`;
-    }catch(e){item.status='failed';item.note=e.message||'Could not create this résumé'}renderBulk()}
-  $('#bulkStatus').textContent=`${BATCH.filter(x=>x.status==='ready').length} ready · ${BATCH.filter(x=>x.status==='failed').length} failed`;$('#runBulk').disabled=false;$('#stopBulk').classList.add('hide')};
+function batchStage(x){return x.status==='complete'?'7 of 7 · Design & Test complete':x.status==='ready'?'Ready to start · 0 of 7':x.status==='active'?`${S.step} of 7 · ${STEPS[S.step-1]}`:x.note||x.status}
+function renderBulk(){const host=$('#bulkResults');host.innerHTML=BATCH.map((x,i)=>`<div class="bulk-result ${x.status==='complete'?'ok':x.status==='failed'?'fail':i===S.batchIndex?'active':''}"><div><b>${i+1}. ${esc(x.title||x.url)}</b><span>${esc(batchStage(x))}</span></div><div>${['ready','active','complete'].includes(x.status)?`<button class="btn ${i===S.batchIndex?'primary':'plain'} sm" data-bulk-open="${i}">${x.status==='complete'?'Review output':x.status==='active'?'Continue lifecycle':'Start lifecycle'}</button>`:''}</div></div>`).join('')}
+$('#runBulk').onclick=async()=>{const urls=[...new Set($('#bulkUrls').value.split(/\n+/).map(x=>x.trim()).filter(Boolean))];if(!urls.length)return toast('Add at least one vacancy link');if(urls.length>20)return toast('Bulk mode accepts a maximum of 20 vacancy links');if(words($('#resume').value)<40)return toast('Add your shared source résumé first');bulkStop=false;BATCH.length=0;S.batchIndex=-1;urls.forEach(url=>BATCH.push({url,status:'queued',title:url,note:'Waiting'}));renderBulk();$('#runBulk').disabled=true;$('#stopBulk').classList.remove('hide');
+  for(let i=0;i<BATCH.length;i++){if(bulkStop){BATCH.slice(i).forEach(x=>{x.status='stopped';x.note='Stopped'});break}const item=BATCH[i];try{item.status='extracting';item.note='Extracting vacancy';renderBulk();$('#bulkStatus').textContent=`${i+1} of ${BATCH.length}: extracting`;const vac=await extractVacancyUrl(item.url),u=new URL(item.url);item.title=vac.title||`Vacancy ${i+1}`;item.role=vac.title||'';item.company=(u.hostname.split('.').slice(-2,-1)[0]||u.hostname).replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());item.jd=vac.text;item.status='ready';item.note='Ready for Evidence Vault';}catch(e){item.status='failed';item.note=e.message||'Could not extract this vacancy'}renderBulk()}
+  $('#bulkStatus').textContent=`${BATCH.filter(x=>x.status==='ready').length} applications prepared · open each to run the full lifecycle`;$('#runBulk').disabled=false;$('#stopBulk').classList.add('hide')};
 $('#stopBulk').onclick=()=>{bulkStop=true;$('#bulkStatus').textContent='Stopping after the current vacancy…'};
-$('#bulkResults').addEventListener('click',e=>{const b=e.target.closest('[data-bulk-download]');if(!b)return;const x=BATCH[+b.dataset.bulkDownload],format=b.dataset.bulkFormat;if(!x||!x.outputs)return;const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([x.outputs[format]],{type:'text/plain'}));a.download=`truthfit-${String(x.title||'vacancy').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)}-${format==='1'?'one-page':'detailed-cv'}.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)});
+$('#bulkResults').addEventListener('click',e=>{const b=e.target.closest('[data-bulk-open]');if(!b)return;const i=+b.dataset.bulkOpen,x=BATCH[i];if(!x)return;S.batchIndex=i;$('#company').value=x.company||'';$('#role').value=x.role||x.title||'';$('#jd').value=x.jd||'';$('#jdUrl').value=x.url||'';x.status='active';x.note='Import';renderBulk();renderBar();startAnalysis()});
 
 /* =================== Vault =================== */
 function buildVault(resume,extra,links){
@@ -452,7 +464,11 @@ async function startAnalysis(){
   for(const i of [3,4,5]){act(i);if(i===5){$('#bridge').classList.add('live');$$('#cloudA .frag').forEach((f,j)=>setTimeout(()=>{const r=S.reqs.find(x=>x.id===f.dataset.r);f.classList.add(r.status==='proven'?'ok':r.status==='partial'?'part':'no')},j*70*d))}await sleep(reduce?80:480);done(i)}
   $('#pulse').classList.remove('run');$('#ovTitle').textContent=S.aiUsed?`Analysed by ${S.aiModel}`:'Your evidence vault is ready';
   S.before=score(I.resume,'before');
-  await sleep(reduce?80:700);ov.classList.add('hide');S.running=false;$('#nextBtn').disabled=false;go(2);
+  await sleep(reduce?80:700);ov.classList.add('hide');S.running=false;$('#nextBtn').disabled=false;
+  if(S.creationMode==='simple'){
+    visibleChanges().forEach(c=>{if(!check(c,afterOf(c)).blocked)S.decisions[c.id]='accept'});
+    S.maxStep=7;go(7);toast('Your tailored résumé is ready — AI completed all evidence and truth checks');
+  }else go(2);
 }
 
 /* =================== Role intelligence =================== */
@@ -1020,7 +1036,7 @@ function renderPlans(){const u=usage();$('#usageNote').innerHTML=`${ic('info')}<
   $('#plans').innerHTML=PLANS.map(p=>`<div class="plan ${p.rec?'best':''}"><h3>${p.name}</h3><div class="pr">${p.price} <small>${p.per}</small></div>${p.note?`<span class="tag t-ok" style="justify-self:start">${ic('check')}${p.note}</span>`:''}<ul>${p.items.map(i=>`<li>${ic('check')}<span>${esc(i)}</span></li>`).join('')}</ul><button class="btn ${p.id==='free'?'ghost':p.rec?'primary':'line'} sm" data-plan="${p.id}" ${p.id==='free'?'disabled':''}>${p.cta}</button></div>`).join('')}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(b&&!b.disabled)toast('Checkout isn\'t part of this prototype — this tests which plan people choose')});
 
-function reset(){F.forEach(k=>$('#'+k).value='');$('#jdUrl').value='';$$('.upmsg').forEach(m=>m.textContent='');$$('[data-file-card]').forEach(m=>m.innerHTML='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:'',analysisSignature:'',stale:false,exported:false,running:false});go(1)}
+function reset(){F.forEach(k=>$('#'+k).value='');$('#jdUrl').value='';$$('.upmsg').forEach(m=>m.textContent='');$$('[data-file-card]').forEach(m=>m.innerHTML='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:'',analysisSignature:'',stale:false,exported:false,running:false,batchIndex:-1});go(1);renderCreationMode()}
 window.addEventListener('beforeunload',e=>{if(S.maxStep>1&&!S.exported){e.preventDefault();e.returnValue=''}});
-renderUsage();renderAIStatus();renderLengthHint();renderRegionPractice();go(1);
+renderUsage();renderAIStatus();renderLengthHint();renderRegionPractice();renderCreationMode();go(1);
 })();

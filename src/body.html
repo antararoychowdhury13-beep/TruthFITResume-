@@ -82,17 +82,26 @@
   <div class="eyebrow">Step 1 of 7</div>
   <h1 class="title">Import</h1>
   <p class="lede">Bring the vacancy and your evidence. TruthFit turns your résumé into a verified vault, researches the role, and only proposes changes it can trace back to something you've done.</p>
+  <div class="creation-switch" aria-label="Resume creation mode">
+    <button type="button" class="creation-choice" data-creation="simple" aria-pressed="false"><b>Simple</b><span>Give us the role, vacancy and résumé. AI runs every check and creates the tailored résumé for you.</span></button>
+    <button type="button" class="creation-choice" data-creation="advanced" aria-pressed="true"><b>Advanced</b><span>Inspect and control the Evidence Vault, Role Intelligence, Evidence Map, Strategy, Review and Design &amp; Test.</span></button>
+  </div>
+  <div class="workflow-switch" id="workflowSwitch" aria-label="Advanced tailoring type">
+    <span>Advanced workflow</span>
+    <div class="seg"><button type="button" data-workflow="single" aria-pressed="true">Single tailored résumé</button><button type="button" data-workflow="bulk" aria-pressed="false">Bulk · up to 20</button></div>
+  </div>
   <div class="grid2">
     <div class="card">
       <div class="card-h"><div><h2>Application details</h2><p>Required fields are marked •</p></div><button class="btn line sm" id="loadExample"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Load sample example</button></div>
       <div class="card-b">
-        <details class="bulkbox" id="bulkMode"><summary><b>Bulk tailoring</b><span>Up to 20 vacancy links → separate tailored résumés</span></summary><div class="bulkbody">
-          <p class="hint">Uses the single source résumé below. Each vacancy is extracted, analysed and validated independently; one failed link does not stop the batch.</p>
+        <div class="bulkbox hide" id="bulkMode"><div class="bulkbody">
+          <h3>Batch application workspace</h3>
+          <p class="hint">Uses the source résumé below. Each vacancy becomes a separate application and follows the full seven-step lifecycle. A failed link does not stop the batch.</p>
           <label class="lbl" for="bulkUrls">Job vacancy links <em>one per line, maximum 20</em></label>
           <textarea id="bulkUrls" placeholder="https://company.example/jobs/role-one&#10;https://company.example/jobs/role-two"></textarea>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" class="btn line sm" id="runBulk">Create batch</button><button type="button" class="btn ghost sm hide" id="stopBulk">Stop</button><span class="hint" id="bulkStatus" aria-live="polite" style="margin:0"></span></div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" class="btn line sm" id="runBulk">Prepare applications</button><button type="button" class="btn ghost sm hide" id="stopBulk">Stop</button><span class="hint" id="bulkStatus" aria-live="polite" style="margin:0"></span></div>
           <div id="bulkResults" class="bulk-results"></div>
-        </div></details>
+        </div></div>
         <div class="row2">
           <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization" required aria-required="true"></div>
           <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off" required aria-required="true"></div>
@@ -110,14 +119,14 @@
           <div class="upmsg" data-msg="resume" aria-live="polite"></div>
           <div data-file-card="resume"></div>
         </div>
-        <div class="field drop" data-target="extra">
+        <div class="field drop advanced-option" data-target="extra">
           <div class="lbl"><label for="extra">Extra evidence <em>optional</em></label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="extra"></label></div>
           <textarea id="extra" placeholder="Projects, certificates, awards, side work — anything true that isn't on your résumé yet."></textarea>
           <div class="upmsg" data-msg="extra" aria-live="polite"></div>
           <div data-file-card="extra"></div>
         </div>
-        <div class="field"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
-        <div class="row3">
+        <div class="field advanced-option"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
+        <div class="row3 advanced-option">
           <div class="field"><span class="lbl">Outputs</span><div class="seg" data-opt="pages"><button aria-pressed="false" data-v="1">1-page</button><button aria-pressed="true" data-v="detail">Detailed CV</button><button aria-pressed="false" data-v="both">Both</button></div><p class="hint" id="lengthHint">Adaptive detailed CV: length follows evidence depth and readability rather than a fixed page cap.</p></div>
           <div class="field"><div class="lbl"><label for="region">Region</label></div><select id="region"><option value="IN">India</option><option value="UK">UK / Europe</option><option value="US">United States</option><option value="GCC">Middle East (GCC)</option></select></div>
           <div class="field"><span class="lbl">Tone</span><div class="seg" data-opt="tone"><button aria-pressed="false" data-v="bold">Bold</button><button aria-pressed="true" data-v="balanced">Balanced</button><button aria-pressed="false" data-v="modest">Modest</button></div></div>

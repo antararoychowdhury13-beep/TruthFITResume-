@@ -135,6 +135,7 @@ textarea.tall{min-height:200px}
 .urlrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}.urlrow .btn{white-space:nowrap}
 .decision-accordion{overflow:hidden}.decision-accordion summary{cursor:pointer;list-style:none}.decision-accordion summary::-webkit-details-marker{display:none}.decision-accordion summary:after{content:'›';font-size:1.4rem;color:var(--label2);transform:rotate(90deg);transition:transform .2s}.decision-accordion[open] summary:after{transform:rotate(-90deg)}
 .bulkbox{border:1px solid var(--sep);border-radius:12px;margin-bottom:16px;overflow:hidden}.bulkbox summary{cursor:pointer;list-style:none;padding:11px 13px;display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--card2)}.bulkbox summary::-webkit-details-marker{display:none}.bulkbox summary span{font-size:.75rem;color:var(--label2)}.bulkbody{padding:12px}.bulk-results{display:grid;gap:7px;margin-top:10px}.bulk-result{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 10px;border-radius:9px;background:var(--fill);font-size:.8125rem}.bulk-result b,.bulk-result span{display:block}.bulk-result span{font-size:.75rem;color:var(--label2);margin-top:2px}.bulk-result.fail{box-shadow:inset 3px 0 var(--red)}.bulk-result.ok{box-shadow:inset 3px 0 var(--green)}
+.creation-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}.creation-choice{border:1px solid var(--sep);background:var(--card);border-radius:14px;padding:14px 16px;text-align:left;display:grid;gap:4px;box-shadow:inset 0 0 0 2px transparent}.creation-choice[aria-pressed=true]{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue);background:#f2f7ff}.creation-choice b{font-size:1rem}.creation-choice span{font-size:.8125rem;line-height:1.35;color:var(--label2)}.workflow-switch{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;margin-bottom:14px;border-radius:12px;background:var(--fill)}.workflow-switch>span{font-weight:600;font-size:.875rem}.bulkbody h3{font-size:.95rem;margin:0 0 4px}.bulk-result.active{box-shadow:inset 3px 0 var(--blue)}
 /* Segmented control */
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;flex-wrap:wrap;gap:0}
 .seg button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 8px;font-size:.8125rem;font-weight:500;color:var(--label);min-height:32px;transition:background .2s var(--ease)}
@@ -490,6 +491,7 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
   .class-grid{grid-template-columns:1fr 1fr}
 }
 @media (min-width:1024px){.nav-back{visibility:hidden!important}.nav-actions .iconbtn.m{display:none}}
+@media (max-width:640px){.creation-switch{grid-template-columns:1fr}.workflow-switch{align-items:stretch;flex-direction:column}.workflow-switch .seg{width:100%}}
 @media (max-width:640px){
   .navbar-in{padding:4px 8px;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
   .nav-prog{width:84px}
