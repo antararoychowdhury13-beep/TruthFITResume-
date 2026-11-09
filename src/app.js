@@ -177,14 +177,43 @@ $$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
 function loadScript(src){return LIBS[src]||(LIBS[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete LIBS[src];no(new Error('The file reader could not load. Check your connection, or paste the text.'))};document.head.appendChild(s)}))}
-async function extract(file,ext){
-  if(ext==='pdf'){await loadScript(CDN+'pdf.js/3.11.174/pdf.min.js');await loadScript(CDN+'pdf.js/3.11.174/pdf.worker.min.js');
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
-    const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,out=[];
-    for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();let line='',y=null;const ls=[];
-      c.items.forEach(it=>{const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2){ls.push(line);line=''}line+=(line&&!line.endsWith(' ')&&!it.str.startsWith(' ')?' ':'')+it.str;y=yy;if(it.hasEOL){ls.push(line);line='';y=null}});
-      ls.push(line);out.push(ls.map(l=>l.replace(/\s+/g,' ').trim()).join('\n'))}
-    return out.join('\n\n')}
+function pdfPageText(c){let line='',y=null,ls=[];c.items.forEach(it=>{const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2){ls.push(line);line=''}line+=(line&&!line.endsWith(' ')&&!it.str.startsWith(' ')?' ':'')+it.str;y=yy;if(it.hasEOL){ls.push(line);line='';y=null}});ls.push(line);return ls.map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n')}
+async function ocrPage(page,i,total,k){
+  setMsg(k,`Scanned page ${i} of ${total} — Qwen Vision OCR is reading it…`);
+  const raw=page.getViewport({scale:2}),scale=Math.min(1,1800/raw.width,2400/raw.height),vp=page.getViewport({scale:2*scale});
+  const canvas=document.createElement('canvas');canvas.width=Math.ceil(vp.width);canvas.height=Math.ceil(vp.height);
+  await page.render({canvasContext:canvas.getContext('2d',{alpha:false}),viewport:vp,background:'white'}).promise;
+  const image=canvas.toDataURL('image/jpeg',.82).split(',')[1];canvas.width=canvas.height=1;
+  const res=await fetch('/api/ocr',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({image,kind:k,page:i})});
+  const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`AI OCR failed on page ${i}`);
+  return {text:(data.text||'').trim(),model:data.model||'Qwen Vision'};
+}
+async function cloudExtract(file,k){
+  setMsg(k,`The browser could not parse ${file.name}. Trying Cloudflare's document recovery…`);
+  const form=new FormData();form.append('file',file,file.name);
+  const res=await fetch('/api/extract-file',{method:'POST',body:form}),data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||'Cloud document recovery failed');const text=(data.text||'').trim();
+  if(words(text)<5)throw new Error('Cloudflare could not recover readable text from this PDF');return text;
+}
+async function extractPdf(file,k){
+  await loadScript(CDN+'pdf.js/3.11.174/pdf.min.js');await loadScript(CDN+'pdf.js/3.11.174/pdf.worker.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
+  let pdf;
+  try{pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),stopAtErrors:false,isEvalSupported:false,useSystemFonts:true}).promise}
+  catch(localError){const recovered=await cloudExtract(file,k);if(recovered)return {text:recovered,mode:'cloud recovery'};throw new Error(`This PDF is damaged and neither parser could recover it. Re-export it with “Print to PDF” and upload again. (${localError.message})`)}
+  const out=[],ocr=[];
+  for(let i=1;i<=pdf.numPages;i++){
+    setMsg(k,`Reading page ${i} of ${pdf.numPages}…`);const page=await pdf.getPage(i);let text='';
+    try{text=pdfPageText(await page.getTextContent({disableCombineTextItems:false}))}catch(_){}
+    if(words(text)<3){const result=await ocrPage(page,i,pdf.numPages,k);text=result.text;if(result.model)ocr.push(result.model)}
+    out.push(text);
+  }
+  let text=out.filter(Boolean).join('\n\n').trim();
+  if(!text){text=await cloudExtract(file,k);if(text)return {text,mode:'cloud recovery'}}
+  return {text,mode:ocr.length?`AI OCR · ${ocr[0]}`:'local text extraction'};
+}
+async function extract(file,ext,k){
+  if(ext==='pdf')return extractPdf(file,k);
   if(ext==='docx'){await loadScript(CDN+'mammoth/1.8.0/mammoth.browser.min.js');return (await window.mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value}
   const t=await file.text();return /^html?$/.test(ext)?new DOMParser().parseFromString(t,'text/html').body.innerText:t;
 }
@@ -193,9 +222,9 @@ function readFile(file,k){
   if(file.size>10*1024*1024)return setMsg(k,'File is larger than 10 MB.',true);
   if(!['pdf','docx','txt','md','html','htm'].includes(ext))return setMsg(k,ext==='doc'?'Old .doc files can\'t be read in the browser. Save as .docx or PDF.':'Use a PDF, Word (.docx), .txt or .md file.',true);
   setMsg(k,`Reading ${file.name}…`);
-  extract(file,ext).then(t=>{t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
-    if(!t)throw new Error(ext==='pdf'?'No text found — this looks like a scanned PDF. Paste the text instead.':'No readable text found.');
-    $('#'+k).value=t;setMsg(k,`✓ ${file.name} — ${words(t)} words read in your browser. Check the text before continuing.`);renderBar()}).catch(e=>setMsg(k,e.message||'Could not read that file.',true));
+  extract(file,ext,k).then(result=>{const mode=result&&typeof result==='object'?result.mode:'';let t=result&&typeof result==='object'?result.text:result;t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+    if(!t)throw new Error(ext==='pdf'?'No readable text was found after local extraction and AI OCR.':'No readable text found.');
+    $('#'+k).value=t;setMsg(k,`✓ ${file.name} — ${words(t)} words · ${mode||'read in your browser'}. Check the text before continuing.`);renderBar()}).catch(e=>setMsg(k,e.message||'Could not read that file.',true));
 }
 $$('input[type=file]').forEach(i=>i.addEventListener('change',e=>{readFile(e.target.files[0],i.dataset.for);e.target.value=''}));
 $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>readFile(e.dataTransfer.files[0],k))});
@@ -272,7 +301,7 @@ function renderAIStatus(){
   const msg=off?'Offline engine selected — no AI is used.':live?`Connected securely${names.length?` · ${names.join(', ')}`:''}. TruthFit guardrails re-check every answer.`:SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
   const selected=selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
-  $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`Active model: ${selected}. Privacy Shield hides contact details.`:'AI unavailable · the offline engine will be used.';
+  $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`Active model: ${selected}. Text is privacy-filtered; scanned pages use secure Qwen Vision OCR.`:'AI unavailable · the offline engine will be used.';
   $('#letterAI').classList.toggle('hide',!live);
   if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=!!AI_MODELS.available[row.dataset.provider];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }

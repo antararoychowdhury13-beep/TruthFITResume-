@@ -53,6 +53,33 @@ async function runWorkersAI(prompt, env, requested = "workers") {
   return { text: typeof output === "string" ? output : JSON.stringify(output), model, provider: label };
 }
 
+function aiText(data) {
+  const output = typeof data === "string" ? data : data.response ?? data.output_text ?? data.choices?.[0]?.message?.content ?? data.result?.response;
+  return typeof output === "string" ? output.trim() : output == null ? "" : JSON.stringify(output);
+}
+
+async function runVisionOcr(image, kind, page, env) {
+  if (!env.AI) throw new Error("Workers AI is not configured");
+  const model = env.OCR_MODEL || env.QWEN_MODEL || "@cf/qwen/qwen3.8-27b";
+  const label = kind === "jd" ? "job description" : kind === "extra" ? "supporting evidence" : "résumé";
+  const prompt = `Transcribe every visible word from page ${page || 1} of this ${label}. Preserve reading order, headings, bullets, dates, numbers, names, and line breaks. Do not summarize, rewrite, correct, infer, or describe the page. Return only the transcription. If no text is visible, return exactly [NO TEXT].`;
+  const data = await env.AI.run(model, {
+    messages: [
+      { role: "system", content: "You are a precise document OCR engine. Output only text visible in the supplied page image." },
+      { role: "user", content: [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } },
+      ] },
+    ],
+    max_tokens: 6000,
+    temperature: 0,
+    reasoning_effort: "low",
+  });
+  const text = aiText(data);
+  if (!text) throw new Error("The vision model returned no text");
+  return { text: text === "[NO TEXT]" ? "" : text, model, provider: "Qwen Vision via Workers AI" };
+}
+
 async function runAI(prompt, requested, env) {
   const order = requested && requested !== "auto" ? [requested] : String(env.AI_PROVIDER_ORDER || "anthropic,openai,qwen,kimi,workers").split(",").map(x => x.trim());
   const errors = [];
@@ -89,6 +116,30 @@ export default {
         if (body.prompt.length > 65000) return json({ error: "Prompt is too large" }, 413);
         return json(await runAI(body.prompt, body.provider || "auto", env));
       } catch (error) { return json({ error: error.message || "AI request failed" }, 502); }
+    }
+    if (url.pathname === "/api/ocr" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        if (!body || typeof body.image !== "string" || !/^[A-Za-z0-9+/=]+$/.test(body.image)) return json({ error: "A base64 page image is required" }, 400);
+        if (body.image.length > 5_500_000) return json({ error: "Page image is too large for OCR" }, 413);
+        return json(await runVisionOcr(body.image, body.kind, body.page, env));
+      } catch (error) { return json({ error: error.message || "OCR request failed" }, 502); }
+    }
+    if (url.pathname === "/api/extract-file" && request.method === "POST") {
+      try {
+        if (!env.AI) return json({ error: "Workers AI is not configured" }, 503);
+        const form = await request.formData();
+        const file = form.get("file");
+        if (!(file instanceof File)) return json({ error: "A PDF file is required" }, 400);
+        if (file.size > 10 * 1024 * 1024) return json({ error: "File is larger than 10 MB" }, 413);
+        const result = await env.AI.toMarkdown(
+          { name: file.name || "document.pdf", blob: file },
+          { conversionOptions: { output: { format: "text" }, pdf: { metadata: false } } },
+        );
+        const item = Array.isArray(result) ? result[0] : result;
+        if (!item || item.format === "error") throw new Error(item?.error || "Cloudflare could not parse this PDF");
+        return json({ text: String(item.data || "").trim(), parser: "Cloudflare document conversion" });
+      } catch (error) { return json({ error: error.message || "Document conversion failed" }, 422); }
     }
     return env.ASSETS.fetch(request);
   },
