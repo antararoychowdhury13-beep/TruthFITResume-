@@ -86,6 +86,13 @@
     <div class="card">
       <div class="card-h"><div><h2>Application details</h2><p>Required fields are marked •</p></div><button class="btn line sm" id="loadExample"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Load sample example</button></div>
       <div class="card-b">
+        <details class="bulkbox" id="bulkMode"><summary><b>Bulk tailoring</b><span>Up to 20 vacancy links → separate tailored résumés</span></summary><div class="bulkbody">
+          <p class="hint">Uses the single source résumé below. Each vacancy is extracted, analysed and validated independently; one failed link does not stop the batch.</p>
+          <label class="lbl" for="bulkUrls">Job vacancy links <em>one per line, maximum 20</em></label>
+          <textarea id="bulkUrls" placeholder="https://company.example/jobs/role-one&#10;https://company.example/jobs/role-two"></textarea>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" class="btn line sm" id="runBulk">Create batch</button><button type="button" class="btn ghost sm hide" id="stopBulk">Stop</button><span class="hint" id="bulkStatus" aria-live="polite" style="margin:0"></span></div>
+          <div id="bulkResults" class="bulk-results"></div>
+        </div></details>
         <div class="row2">
           <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization" required aria-required="true"></div>
           <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off" required aria-required="true"></div>
@@ -111,22 +118,23 @@
         </div>
         <div class="field"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
         <div class="row3">
-          <div class="field"><span class="lbl">Document format</span><div class="seg" data-opt="pages"><button aria-pressed="false" data-v="1">1-page résumé</button><button aria-pressed="true" data-v="2">2-page detailed CV</button></div><p class="hint" id="lengthHint">Detailed evidence, capped at two A4 pages. ATS-safe 9–12 pt type. Your complete source evidence remains in the vault.</p></div>
+          <div class="field"><span class="lbl">Outputs</span><div class="seg" data-opt="pages"><button aria-pressed="false" data-v="1">1-page</button><button aria-pressed="true" data-v="detail">Detailed CV</button><button aria-pressed="false" data-v="both">Both</button></div><p class="hint" id="lengthHint">Adaptive detailed CV: length follows evidence depth and readability rather than a fixed page cap.</p></div>
           <div class="field"><div class="lbl"><label for="region">Region</label></div><select id="region"><option value="IN">India</option><option value="UK">UK / Europe</option><option value="US">United States</option><option value="GCC">Middle East (GCC)</option></select></div>
           <div class="field"><span class="lbl">Tone</span><div class="seg" data-opt="tone"><button aria-pressed="false" data-v="bold">Bold</button><button aria-pressed="true" data-v="balanced">Balanced</button><button aria-pressed="false" data-v="modest">Modest</button></div></div>
         </div>
       </div>
     </div>
     <div class="side-stack">
-      <div class="card"><div class="card-h"><h2>How TruthFit decides</h2></div><div class="card-b">
+      <details class="card decision-accordion"><summary class="card-h"><h2>How TruthFit decides</h2><span class="tag t-low" id="decisionModel">Live model</span></summary><div class="card-b">
         <ul class="rules">
           <li><span class="n" style="background:#5856d6"><svg class="ic" aria-hidden="true"><use href="#i-tray"/></svg></span><div><b>Your evidence is the authority</b>Every claim links to a vault record you can see and confirm.</div></li>
           <li><span class="n" style="background:#af52de"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg></span><div><b>Sources are always labelled</b>Vacancy, role benchmark, company signal or inference — never blended.</div></li>
           <li><span class="n" style="background:#ff9500"><svg class="ic" aria-hidden="true"><use href="#i-lock"/></svg></span><div><b>Facts are locked</b>Employers, titles, dates and qualifications can't be rewritten.</div></li>
           <li><span class="n" style="background:#30b0c7"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg></span><div><b>The output is tested</b>Your résumé is parsed back to check nothing was lost.</div></li>
         </ul>
-      </div></div>
-      <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">TruthFit AI</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
+        <div style="display:flex;gap:12px;align-items:center;border-top:.5px solid var(--sep);padding-top:12px;margin-top:10px"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">TruthFit AI</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div>
+        <div id="regionPractice" class="notice blue" style="margin-top:12px"></div>
+      </div></details>
       <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Your name, contact lines, links, emails and phone numbers are removed from the text before AI analysis. Scanned (image-only) PDFs are the exception: reading them means sending the page images to Qwen Vision OCR, so we ask you first.</div></div>
     </div>
   </div>
@@ -226,6 +234,7 @@
         </div>
       </div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <div class="tabs hide" id="formatSwitch" role="tablist" aria-label="Output format"><button role="tab" data-format="1">One-page résumé</button><button role="tab" data-format="detail">Detailed CV</button></div>
         <div class="tabs" role="tablist"><button role="tab" aria-selected="true" data-ftab="resume"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg> Visual</button><button role="tab" aria-selected="false" data-ftab="parsed"><svg class="ic" aria-hidden="true"><use href="#i-viewfinder"/></svg> Parsed</button><button role="tab" aria-selected="false" data-ftab="letter"><svg class="ic" aria-hidden="true"><use href="#i-envelope"/></svg> Letter</button></div>
         <div class="switchrow" style="margin-left:auto;font-size:.8125rem;color:var(--label2)"><label for="showDiff">Highlight changes</label><input type="checkbox" class="tg" id="showDiff" checked></div>
         <button class="btn plain sm" id="editToggle"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg> Edit text</button>

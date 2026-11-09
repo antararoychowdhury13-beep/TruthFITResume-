@@ -92,3 +92,17 @@ test("one-page contract: creates a concise A4 résumé at an ATS-safe font while
   assert.ok(checks.some(x => /One A4 page/.test(x)), checks.join("\n"));
   assert.ok(final.split("\n").filter(x => /^•/.test(x)).length < 15, "one-page résumé should prioritise rather than copy every bullet");
 });
+
+test("both outputs: user can switch between the one-page résumé and adaptive detailed CV", async () => {
+  const { page } = await openApp();
+  await setProvider(page, "offline");
+  await page.click("#loadExample");
+  await page.click('.seg[data-opt="pages"] button[data-v="both"]');
+  await analyse(page); await goTo(page, 7);
+  assert.equal(await page.$eval("#formatSwitch", e => e.classList.contains("hide")), false);
+  const concise = await page.inputValue("#finalEdit");
+  await page.click('#formatSwitch [data-format="detail"]');
+  const detailed = await page.inputValue("#finalEdit");
+  assert.ok(detailed.length > concise.length, `${detailed.length} should be greater than ${concise.length}`);
+  assert.match(await page.textContent("#finalTitle"), /Detailed CV/);
+});
