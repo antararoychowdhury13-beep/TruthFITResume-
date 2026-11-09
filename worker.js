@@ -46,7 +46,9 @@ async function runWorkersAI(prompt, env, requested = "workers") {
     workers: env.WORKERS_AI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
   };
   const model = models[requested] || models.workers;
-  const data = await env.AI.run(model, { messages: [{ role: "system", content: "Return exactly the requested format. Be factual and concise." }, { role: "user", content: prompt }], max_tokens: 8000, temperature: 0.2 });
+  const input = { messages: [{ role: "system", content: "Return exactly the requested format. Be factual and concise." }, { role: "user", content: prompt }], max_tokens: 1600, temperature: 0.1, reasoning_effort: "low" };
+  if (/Reply with ONLY one JSON object/i.test(prompt)) input.response_format = { type: "json_object" };
+  const data = await env.AI.run(model, input);
   const output = typeof data === "string" ? data : data.response ?? data.output_text ?? data.choices?.[0]?.message?.content ?? data.result?.response;
   if (output == null) throw new Error(`Unexpected response shape from ${model}`);
   const label = requested === "qwen" ? "Qwen via Workers AI" : requested === "kimi" ? "Kimi via Workers AI" : "Cloudflare Workers AI";

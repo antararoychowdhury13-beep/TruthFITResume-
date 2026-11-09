@@ -1049,6 +1049,7 @@ $('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar(
 $$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v}));
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
+const FILE_READS={};
 function loadScript(src){return LIBS[src]||(LIBS[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete LIBS[src];no(new Error('The file reader could not load. Check your connection, or paste the text.'))};document.head.appendChild(s)}))}
 function pdfPageText(c){let line='',y=null,ls=[];c.items.forEach(it=>{const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2){ls.push(line);line=''}line+=(line&&!line.endsWith(' ')&&!it.str.startsWith(' ')?' ':'')+it.str;y=yy;if(it.hasEOL){ls.push(line);line='';y=null}});ls.push(line);return ls.map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n')}
 async function ocrPage(page,i,total,k){
@@ -1073,12 +1074,12 @@ async function extractPdf(file,k){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
   let pdf;
   try{pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),stopAtErrors:false,isEvalSupported:false,useSystemFonts:true}).promise}
-  catch(localError){const recovered=await cloudExtract(file,k);if(recovered)return {text:recovered,mode:'cloud recovery'};throw new Error(`This PDF is damaged and neither parser could recover it. Re-export it with “Print to PDF” and upload again. (${localError.message})`)}
-  const out=[],ocr=[];
+  catch(localError){try{const recovered=await cloudExtract(file,k);if(recovered)return {text:recovered,mode:'cloud recovery'}}catch(_){}throw new Error(`This PDF is damaged and neither parser could recover it. Re-export it with “Print to PDF” and upload again. (${localError.message})`)}
+  const out=[],ocr=[];let scanned=0;
   for(let i=1;i<=pdf.numPages;i++){
     setMsg(k,`Reading page ${i} of ${pdf.numPages}…`);const page=await pdf.getPage(i);let text='';
     try{text=pdfPageText(await page.getTextContent({disableCombineTextItems:false}))}catch(_){}
-    if(words(text)<3){const result=await ocrPage(page,i,pdf.numPages,k);text=result.text;if(result.model)ocr.push(result.model)}
+    if(words(text)<3){scanned++;if(scanned>25)throw new Error('This scanned PDF has more than 25 image-only pages. Split it into smaller files and upload the relevant pages.');const result=await ocrPage(page,i,pdf.numPages,k);text=result.text;if(result.model)ocr.push(result.model)}
     out.push(text);
   }
   let text=out.filter(Boolean).join('\n\n').trim();
@@ -1094,10 +1095,11 @@ function readFile(file,k){
   if(!file)return;const ext=(file.name.split('.').pop()||'').toLowerCase();
   if(file.size>10*1024*1024)return setMsg(k,'File is larger than 10 MB.',true);
   if(!['pdf','docx','txt','md','html','htm'].includes(ext))return setMsg(k,ext==='doc'?'Old .doc files can\'t be read in the browser. Save as .docx or PDF.':'Use a PDF, Word (.docx), .txt or .md file.',true);
-  setMsg(k,`Reading ${file.name}…`);
+  const token=FILE_READS[k]=(FILE_READS[k]||0)+1;setMsg(k,`Reading ${file.name}…`);
   extract(file,ext,k).then(result=>{const mode=result&&typeof result==='object'?result.mode:'';let t=result&&typeof result==='object'?result.text:result;t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+    if(FILE_READS[k]!==token)return;
     if(!t)throw new Error(ext==='pdf'?'No readable text was found after local extraction and AI OCR.':'No readable text found.');
-    $('#'+k).value=t;setMsg(k,`✓ ${file.name} — ${words(t)} words · ${mode||'read in your browser'}. Check the text before continuing.`);renderBar()}).catch(e=>setMsg(k,e.message||'Could not read that file.',true));
+    $('#'+k).value=t;setMsg(k,`✓ ${file.name} — ${words(t)} words · ${mode||'read in your browser'}. Check the text before continuing.`);renderBar()}).catch(e=>{if(FILE_READS[k]===token)setMsg(k,e.message||'Could not read that file.',true)});
 }
 $$('input[type=file]').forEach(i=>i.addEventListener('change',e=>{readFile(e.target.files[0],i.dataset.for);e.target.value=''}));
 $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>readFile(e.dataTransfer.files[0],k))});
@@ -1203,9 +1205,9 @@ ${vault}
 
 TASKS
 A. classification: family = one of [${FAMILIES.map(f=>'"'+f[1]+'"').join(', ')}]; seniority = one of [${SENIORITY.map(s=>'"'+s[0]+'"').join(', ')}]; function (1–2 words); industry (short, or "").
-B. requirements: 10–16 distinct requirements taken ONLY from the job description. For each: label (short, ≤8 words), priority "must"|"nice", gate "Credential gate"|"Experience gate"|"Legal gate"|null, status "proven"|"partial"|"gap" judged only from the vault, match "direct"|"transferable"|null, evidenceId (best vault ID or null), kw (1–2 lowercase exact phrases from the job description an ATS would scan for), note (≤14 words, why it is partial or transferable, else ""), question (for partial/gap: one short interview-style question to close it, else "").
-C. changes: 5–9 proposed edits. type "replace" — "before" MUST be copied character-for-character from ONE résumé line (keep its "• " bullet if it has one); or type "add" — a new bullet starting with "• " plus "heading" (an UPPERCASE section name such as "ADDITIONAL EXPERIENCE"). Fields: title (≤8 words), type, before ("" for add), after, heading (add only), targets (indices into requirements), cites (vault IDs used), origin (subset of ["vac","bench"]), basis "direct" (only vault facts) or "inference" (adds any context not in the vault), risk "low"|"med", claim (if inference: one sentence naming exactly what is not in the vault, else ""), why (one sentence). If you rewrite the professional summary, also give variants {"executive": "...", "technical": "..."}.
-D. gapSuggestions: for every requirement with status partial or gap, 2 statements the candidate could adapt: {angle (≤6 words), basis (a vault ID or "Template"), text}. Put facts only the candidate knows in [square brackets]. Include the requirement's exact keyword.
+B. requirements: 6–8 highest-priority requirements taken ONLY from the job description. For each: label (≤6 words), priority "must"|"nice", gate "Credential gate"|"Experience gate"|"Legal gate"|null, status "proven"|"partial"|"gap" judged only from the vault, match "direct"|"transferable"|null, evidenceId (best vault ID or null), kw (one lowercase exact phrase), note (≤8 words, or ""), question (one short question only for partial/gap, else "").
+C. changes: 2–3 highest-value proposed edits. type "replace" — "before" MUST be copied character-for-character from ONE résumé line (keep its "• " bullet if present); or type "add" — a new bullet starting with "• " plus an UPPERCASE heading. Fields: title, type, before, after, heading, targets (requirement indices), cites (vault IDs), origin (subset of ["vac","bench"]), basis "direct"|"inference", risk "low"|"med", claim (only for inference), why (≤12 words), variants (always null).
+D. gapSuggestions: return an empty object {}. TruthFit generates these safely from the verified vault.
 
 Reply with ONLY one JSON object, no prose:
 {"classification":{"family":"","seniority":"","function":"","industry":""},"requirements":[{"label":"","priority":"must","gate":null,"status":"proven","match":"direct","evidenceId":"E1","kw":[""],"note":"","question":""}],"changes":[{"title":"","type":"replace","before":"","after":"","heading":"","targets":[0],"cites":["E1"],"origin":["vac"],"basis":"direct","risk":"low","claim":"","why":"","variants":null}],"gapSuggestions":{"3":[{"angle":"","basis":"E2","text":""}]}}`;
@@ -1255,22 +1257,22 @@ async function startAnalysis(){
     [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>flags(c.after).length||c.lock).length} changes flagged`]
   ];
   $('#stages').innerHTML=stagesDef.map((s,i)=>`<li class="stage" data-i="${i}"><span class="ico2">${ic('circle')}</span><span>${esc(s[0])}</span><small></small></li>`).join('');
-  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 15–90 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
+  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 15–45 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
   const d=reduce?0:1,done=(i)=>{const li=$(`.stage[data-i="${i}"]`);li.classList.remove('active');li.classList.add('done');li.querySelector('.ico2').innerHTML=ic('check-fill');li.querySelector('small').textContent=stagesDef[i][1]();$('#ovBar').style.width=((i+1)/stagesDef.length*100)+'%'};
   const act=i=>$(`.stage[data-i="${i}"]`).classList.add('active');
   for(const i of [0,1]){act(i);if(i===1)$$('#cloudB .frag').forEach((f,j)=>setTimeout(()=>f.classList.add('in'),j*50*d));await sleep(reduce?80:500);done(i)}
   act(2);
   if(useAI){
-    const ctl=new AbortController();S.aiCtl=ctl;$('#ovStop').classList.remove('hide');$('#ovStream').classList.remove('hide');$('#ovStream').textContent='Thinking…';
-    $('#ovStop').onclick=()=>ctl.abort();
+    const ctl=new AbortController();let stopReason='',timer=setTimeout(()=>{stopReason='timeout';ctl.abort()},45000);S.aiCtl=ctl;$('#ovStop').classList.remove('hide');$('#ovStream').classList.remove('hide');$('#ovStream').textContent='Thinking…';
+    $('#ovStop').onclick=()=>{stopReason='user';ctl.abort()};
     try{
       const res=await SAMPLE(aiPrompt(),{signal:ctl.signal,onText:({text})=>{$('#ovStream').textContent=text.slice(-260);$('#ovTitle').textContent=`TruthFit AI is writing… ${Math.round(text.length/100)/10}k characters`}});
       const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=`${res.provider} · ${res.modelApplied}`;S.generic=false;
     }catch(e){
       offline();const c=e&&e.code;
-      toast(c==='cancelled'?'Stopped — using the offline engine':c==='not_granted'?'Claude access wasn\'t allowed — using the offline engine':c==='rate_limited'?'Claude usage limit reached — using the offline engine for now':'The AI answer couldn\'t be used — falling back to the offline engine');
+      toast(stopReason==='user'?'Stopped — using the offline engine':stopReason==='timeout'?'The AI took too long — continuing with the offline engine':c==='not_granted'?'AI access wasn\'t allowed — using the offline engine':c==='rate_limited'?'The AI usage limit was reached — using the offline engine for now':'The AI answer couldn\'t be used — falling back to the offline engine');
       if(c==='service_error'){renderAIStatus()}
-    }finally{$('#ovStop').classList.add('hide');$('#ovStream').classList.add('hide')}
+    }finally{clearTimeout(timer);$('#ovStop').classList.add('hide');$('#ovStream').classList.add('hide')}
   }else{offline();await sleep(reduce?80:600)}
   S.bench=buildBench();S.mode=recommendedMode();
   const A=S.reqs.slice(0,10);
