@@ -100,3 +100,23 @@ test("BYOK: a user's OpenAI key is used for one request and is never returned", 
     assert.doesNotMatch(JSON.stringify(body), /sk-user-owned/);
   } finally { globalThis.fetch = realFetch; }
 });
+
+test("vacancy URL: extracts JobPosting structured data", async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(`<html><title>Designer at Acme</title><script type="application/ld+json">{"@type":"JobPosting","title":"Product Designer","description":"Lead product design across several customer-facing workflows. Partner with engineers, conduct user research, build prototypes, and measure outcomes for a growing SaaS platform."}</script></html>`, { headers: { "content-type": "text/html" } });
+  try {
+    const res = await worker.fetch(post("/api/extract-url", { url: "https://jobs.example.com/designer" }), env());
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.match(body.text, /Lead product design/);
+    assert.equal(body.url, "https://jobs.example.com/designer");
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test("vacancy URL: blocks private and local network targets", async () => {
+  for (const url of ["http://localhost/job", "http://127.0.0.1/job", "http://192.168.1.1/job", "http://10.0.0.2/job", "http://169.254.169.254/latest/meta-data"]) {
+    const res = await worker.fetch(post("/api/extract-url", { url }), env());
+    assert.equal(res.status, 422, url);
+    assert.match((await res.json()).error, /Private or local/);
+  }
+});

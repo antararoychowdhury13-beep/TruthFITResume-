@@ -92,18 +92,22 @@
         </div>
         <div class="field drop" data-target="jd">
           <div class="lbl"><label for="jd">Job description •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="jd"></label></div>
+          <div class="urlrow"><input type="url" id="jdUrl" placeholder="Paste a public job vacancy link"><button type="button" class="btn line sm" id="extractJdUrl">Extract description</button></div>
           <textarea id="jd" placeholder="Paste the full vacancy — responsibilities, qualifications and required skills." required aria-required="true"></textarea>
           <div class="upmsg" data-msg="jd" aria-live="polite"></div>
+          <div data-file-card="jd"></div>
         </div>
         <div class="field drop" data-target="resume">
           <div class="lbl"><label for="resume">Your résumé •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> PDF, Word or text<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="resume"></label></div>
           <textarea id="resume" class="tall" placeholder="Paste or drop your complete résumé. Keep company names, titles, dates and numbers exactly as they are." required aria-required="true"></textarea>
           <div class="upmsg" data-msg="resume" aria-live="polite"></div>
+          <div data-file-card="resume"></div>
         </div>
         <div class="field drop" data-target="extra">
           <div class="lbl"><label for="extra">Extra evidence <em>optional</em></label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="extra"></label></div>
           <textarea id="extra" placeholder="Projects, certificates, awards, side work — anything true that isn't on your résumé yet."></textarea>
           <div class="upmsg" data-msg="extra" aria-live="polite"></div>
+          <div data-file-card="extra"></div>
         </div>
         <div class="field"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
         <div class="row3">

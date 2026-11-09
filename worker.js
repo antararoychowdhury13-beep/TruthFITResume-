@@ -127,6 +127,32 @@ async function readJson(request) {
   try { return await request.json(); } catch { return undefined; }
 }
 
+function publicUrl(value) {
+  let url; try { url = new URL(String(value || "")); } catch { throw new Error("Enter a valid public vacancy URL"); }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("Only public http/https URLs are supported");
+  if (!["", "80", "443"].includes(url.port)) throw new Error("That URL uses an unsupported port");
+  const h = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || h === "0.0.0.0" || h === "::1" || h.startsWith("127.") || h.startsWith("10.") || h.startsWith("192.168.") || /^172\.(1[6-9]|2\d|3[01])\./.test(h) || /^169\.254\./.test(h)) throw new Error("Private or local addresses cannot be fetched");
+  return url;
+}
+function decodeHtml(s) { return String(s || "").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n)); }
+function plainHtml(s) { return decodeHtml(String(s || "").replace(/<br\s*\/?\s*>/gi, "\n").replace(/<\/p\s*>/gi, "\n").replace(/<\/li\s*>/gi, "\n").replace(/<li\b[^>]*>/gi, "• ").replace(/<[^>]+>/g, " ")).replace(/[ \t]+/g, " ").replace(/\s*\n\s*/g, "\n").replace(/\n{3,}/g, "\n\n").trim(); }
+function vacancyText(html) {
+  let structured = "";
+  for (const m of html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { const root = JSON.parse(m[1]), stack = Array.isArray(root) ? root : [root]; while (stack.length) { const x = stack.shift(); if (!x || typeof x !== "object") continue; if (Array.isArray(x)) { stack.push(...x); continue; } if (x["@type"] === "JobPosting" || (Array.isArray(x["@type"]) && x["@type"].includes("JobPosting"))) { structured = [x.title, x.description, x.qualifications, x.responsibilities, x.skills].filter(Boolean).map(plainHtml).join("\n\n"); break; } Object.values(x).forEach(v => { if (v && typeof v === "object") stack.push(v); }); } } catch {}
+  }
+  const title = plainHtml((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || "Job vacancy");
+  if (structured.length > 100) return { title, text: structured };
+  const body = html.replace(/<script\b[\s\S]*?<\/script>/gi, " ").replace(/<style\b[\s\S]*?<\/style>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg>/gi, " ").replace(/<nav\b[\s\S]*?<\/nav>/gi, " ").replace(/<header\b[\s\S]*?<\/header>/gi, " ").replace(/<footer\b[\s\S]*?<\/footer>/gi, " ");
+  return { title, text: plainHtml(body) };
+}
+async function readLimited(response, max = 2_000_000) {
+  const reader = response.body.getReader(), chunks = []; let total = 0;
+  while (true) { const { done, value } = await reader.read(); if (done) break; total += value.byteLength; if (total > max) { reader.cancel(); throw new Error("Vacancy page is larger than 2 MB"); } chunks.push(value); }
+  const out = new Uint8Array(total); let at = 0; for (const chunk of chunks) { out.set(chunk, at); at += chunk.length; } return new TextDecoder().decode(out);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -182,6 +208,18 @@ export default {
         if (!item || item.format === "error") throw new Error(item?.error || "Cloudflare could not parse this PDF");
         return json({ text: String(item.data || "").trim(), parser: "Cloudflare document conversion" });
       } catch (error) { console.error("Document conversion failed", error.message); return json({ error: "This document could not be recovered. Export a fresh unlocked PDF or paste the text." }, 422); }
+    }
+    if (url.pathname === "/api/extract-url" && request.method === "POST") {
+      try {
+        const body = await readJson(request); if (body === undefined) return json({ error: "The request body must be valid JSON" }, 400); let target = publicUrl(body && body.url);
+        let response;
+        for (let i = 0; i < 4; i++) { response = await fetch(target, { redirect: "manual", headers: { accept: "text/html,application/xhtml+xml,text/plain;q=0.8", "user-agent": "TruthFit vacancy reader/1.0" } }); if (response.status >= 300 && response.status < 400) { const location = response.headers.get("location"); if (!location) throw new Error("The vacancy page redirected without a destination"); target = publicUrl(new URL(location, target).href); continue; } break; }
+        if (!response || !response.ok) throw new Error(`The vacancy site returned ${response && response.status || "an error"}`);
+        const type = response.headers.get("content-type") || ""; if (!/text\/html|application\/xhtml\+xml|text\/plain/i.test(type)) throw new Error("The link is not a readable web page");
+        const html = await readLimited(response), out = /text\/plain/i.test(type) ? { title: target.hostname, text: html.trim() } : vacancyText(html);
+        if (out.text.split(/\s+/).length < 20) throw new Error("Not enough vacancy text was found. This site may require a login or block automated reading — paste the description instead.");
+        return json({ title: out.title.slice(0, 160), text: out.text.slice(0, 50000), url: target.href });
+      } catch (error) { console.error("Vacancy URL extraction failed", error.message); return json({ error: error.message || "Could not read that vacancy URL" }, 422); }
     }
     const response = await env.ASSETS.fetch(request);
     const headers = new Headers(response.headers);

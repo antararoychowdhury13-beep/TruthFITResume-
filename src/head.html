@@ -128,6 +128,11 @@ textarea.tall{min-height:200px}
 .drop.drag textarea{box-shadow:0 0 0 2px var(--blue);background:color-mix(in srgb,var(--blue) 8%,var(--card))}
 .upmsg{font-size:.8125rem;margin-top:6px;color:var(--label2)}
 .upmsg.err{color:var(--red-t)}
+.filecard{display:flex;align-items:center;gap:10px;margin-top:8px;padding:9px 10px;border:1px solid var(--sep);border-radius:10px;background:var(--fill)}
+.filecard .fic{width:32px;height:32px;border-radius:8px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;flex:0 0 auto}.filecard .fic .ic{width:17px;height:17px}
+.filecard .finfo{min-width:0;flex:1}.filecard .finfo b,.filecard .finfo span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.filecard .finfo b{font-size:.8125rem}.filecard .finfo span{font-size:.75rem;color:var(--label2);margin-top:2px}
+.filecard .fremove{border:0;background:transparent;color:var(--label2);padding:6px;border-radius:7px;cursor:pointer}.filecard .fremove:hover{background:var(--fill2);color:var(--red-t)}
+.urlrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px}.urlrow .btn{white-space:nowrap}
 /* Segmented control */
 .seg{display:flex;background:var(--fill);border-radius:9px;padding:2px;flex-wrap:wrap;gap:0}
 .seg button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 8px;font-size:.8125rem;font-weight:500;color:var(--label);min-height:32px;transition:background .2s var(--ease)}

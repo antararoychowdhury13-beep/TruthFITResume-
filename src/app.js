@@ -177,6 +177,7 @@ F.forEach(k=>$('#'+k).addEventListener('input',()=>{markStale();if(S.step===1)re
 $('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar();toast('Sample example loaded — replace it with your own application details')};
 $$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v;markStale()}));
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
+function fileCard(k,file,state,detail,err){const host=$(`[data-file-card="${k}"]`);if(!host)return;if(!file){host.innerHTML='';return}const ext=(file.name.split('.').pop()||'file').toUpperCase(),size=file.size<1024?`${file.size} B`:file.size<1048576?`${(file.size/1024).toFixed(1)} KB`:`${(file.size/1048576).toFixed(1)} MB`;host.innerHTML=`<div class="filecard"><span class="fic">${ic('doc')}</span><span class="finfo"><b>${esc(file.name)}</b><span>${esc(ext)} · ${size} · ${esc(state)}${detail?' · '+esc(detail):''}</span></span><button type="button" class="fremove" data-remove-file="${k}" aria-label="Remove ${esc(file.name)}">${ic('xmark')}</button></div>`;host.querySelector('.filecard').style.borderColor=err?'var(--red)':''}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
 const FILE_READS={};
 function loadScript(src){return LIBS[src]||(LIBS[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete LIBS[src];no(new Error('The file reader could not load. Check your connection, or paste the text.'))};document.head.appendChild(s)}))}
@@ -230,16 +231,19 @@ async function extract(file,ext,k){
 }
 function readFile(file,k){
   if(!file)return;const ext=(file.name.split('.').pop()||'').toLowerCase();
-  if(file.size>10*1024*1024)return setMsg(k,'File is larger than 10 MB.',true);
-  if(!['pdf','docx','txt','md','html','htm'].includes(ext))return setMsg(k,ext==='doc'?'Old .doc files can\'t be read in the browser. Save as .docx or PDF.':'Use a PDF, Word (.docx), .txt or .md file.',true);
+  fileCard(k,file,'Attached','Reading…');
+  if(file.size>10*1024*1024){fileCard(k,file,'Could not read','Larger than 10 MB',true);return setMsg(k,'File is larger than 10 MB.',true)}
+  if(!['pdf','docx','txt','md','html','htm'].includes(ext)){fileCard(k,file,'Unsupported type','',true);return setMsg(k,ext==='doc'?'Old .doc files can\'t be read in the browser. Save as .docx or PDF.':'Use a PDF, Word (.docx), .txt or .md file.',true)}
   const token=FILE_READS[k]=(FILE_READS[k]||0)+1;setMsg(k,`Reading ${file.name}…`);
   extract(file,ext,k).then(result=>{const mode=result&&typeof result==='object'?result.mode:'';let t=result&&typeof result==='object'?result.text:result;t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
     if(FILE_READS[k]!==token)return;
     if(!t)throw new Error(ext==='pdf'?'No readable text was found after local extraction and AI OCR.':'No readable text found.');
-    $('#'+k).value=t;const long=t.length>15000||(result&&result.pages>4);setMsg(k,`${long?'⚠':'✓'} ${file.name} — ${words(t)} words${result&&result.pages?` · ${result.pages} pages`:''} · ${mode||'read in your browser'}. ${long?'Long document: only the most relevant text is sent for analysis. Review the extraction carefully.':'Check the text before continuing.'}`,long);markStale();renderBar()}).catch(e=>{if(FILE_READS[k]===token)setMsg(k,e.message||'Could not read that file.',true)});
+    $('#'+k).value=t;const long=t.length>15000||(result&&result.pages>4),detail=`${words(t)} words${result&&result.pages?` · ${result.pages} pages`:''}`;fileCard(k,file,long?'Attached · review length':'Ready',detail,long);setMsg(k,`${long?'⚠':'✓'} ${file.name} — ${detail} · ${mode||'read in your browser'}. ${long?'Long document: only the most relevant text is sent for analysis. Review the extraction carefully.':'Check the text before continuing.'}`,long);markStale();renderBar()}).catch(e=>{if(FILE_READS[k]===token){fileCard(k,file,'Could not read',e.message||'',true);setMsg(k,e.message||'Could not read that file.',true)}});
 }
 $$('input[type=file]').forEach(i=>i.addEventListener('change',e=>{readFile(e.target.files[0],i.dataset.for);e.target.value=''}));
 $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>readFile(e.dataTransfer.files[0],k))});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-remove-file]');if(!b)return;const k=b.dataset.removeFile;FILE_READS[k]=(FILE_READS[k]||0)+1;fileCard(k,null);setMsg(k,'');$('#'+k).value='';markStale();renderBar()});
+$('#extractJdUrl').onclick=async()=>{const url=$('#jdUrl').value.trim(),b=$('#extractJdUrl');if(!/^https?:\/\//i.test(url))return setMsg('jd','Enter a complete public URL beginning with https://',true);b.disabled=true;setMsg('jd','Reading the public vacancy page…');fileCard('jd',{name:new URL(url).hostname+' vacancy page',size:0},'Linked','Extracting…');try{const r=await fetch('/api/extract-url',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({url})}),data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||'Could not read that vacancy page');$('#jd').value=data.text;fileCard('jd',{name:data.title||new URL(data.url).hostname+' vacancy',size:new Blob([data.text]).size},'Ready',`${words(data.text)} words`);setMsg('jd',`✓ Extracted ${words(data.text)} words from ${new URL(data.url).hostname}. Review the description before continuing.`);markStale();renderBar()}catch(e){fileCard('jd',{name:new URL(url).hostname+' vacancy page',size:0},'Could not extract',e.message,true);setMsg('jd',e.message,true)}finally{b.disabled=false}};
 
 /* =================== Vault =================== */
 function buildVault(resume,extra,links){
@@ -988,7 +992,7 @@ function renderPlans(){const u=usage();$('#usageNote').innerHTML=`${ic('info')}<
   $('#plans').innerHTML=PLANS.map(p=>`<div class="plan ${p.rec?'best':''}"><h3>${p.name}</h3><div class="pr">${p.price} <small>${p.per}</small></div>${p.note?`<span class="tag t-ok" style="justify-self:start">${ic('check')}${p.note}</span>`:''}<ul>${p.items.map(i=>`<li>${ic('check')}<span>${esc(i)}</span></li>`).join('')}</ul><button class="btn ${p.id==='free'?'ghost':p.rec?'primary':'line'} sm" data-plan="${p.id}" ${p.id==='free'?'disabled':''}>${p.cta}</button></div>`).join('')}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(b&&!b.disabled)toast('Checkout isn\'t part of this prototype — this tests which plan people choose')});
 
-function reset(){F.forEach(k=>$('#'+k).value='');$$('.upmsg').forEach(m=>m.textContent='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:'',analysisSignature:'',stale:false,exported:false,running:false});go(1)}
+function reset(){F.forEach(k=>$('#'+k).value='');$('#jdUrl').value='';$$('.upmsg').forEach(m=>m.textContent='');$$('[data-file-card]').forEach(m=>m.innerHTML='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:'',analysisSignature:'',stale:false,exported:false,running:false});go(1)}
 window.addEventListener('beforeunload',e=>{if(S.maxStep>1&&!S.exported){e.preventDefault();e.returnValue=''}});
 renderUsage();renderAIStatus();go(1);
 })();
