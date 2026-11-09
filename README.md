@@ -39,7 +39,7 @@ To publish it as a website, turn on **GitHub Pages**: open the repository's **Se
 - **Fabrication alarm** — any number not found in the vault blocks the change until it is edited.
 - **Fact locks** — changes that alter a locked title, employer, date or qualification cannot be accepted.
 - **Authenticity check** — flags generic phrases, unsupported superlatives, AI-sounding patterns, copying the job ad word for word, and overlong bullets.
-- **Privacy shield** — email and phone are removed from extracted text before analysis and restored on export. Scanned PDF pages must first be sent to the configured vision model for OCR, because contact details cannot be detected until the page is read.
+- **Privacy shield** — the name, header contact lines, links, emails and phone numbers are removed from the text before analysis and restored on export. Scanned PDF pages are only sent to the vision model for OCR after the user agrees, because contact details cannot be detected until the page is read.
 - **Transparent scoring** — the Readiness Score is explicitly *not* an employer's ATS score; all 8 dimensions and their before/after values are shown.
 
 ## AI engine

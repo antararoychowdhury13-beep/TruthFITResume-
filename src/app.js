@@ -17,8 +17,8 @@ const reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)'
 const EMAIL=/[\w.+-]+@[\w-]+\.[\w.]+/, PHONE=/\+?\d[\d\s-]{8,}\d/;
 const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const wb=(text,k)=>k.endsWith('*')?new RegExp('\\b'+reEsc(k.slice(0,-1))).test(text):new RegExp('\\b'+reEsc(k)+'\\b').test(text);
-const isHeading=l=>{l=l.trim();return l.length>2&&l.length<42&&l===l.toUpperCase()&&/[A-Z]/.test(l)&&!/\d/.test(l)&&!/^[•\-*]/.test(l)};
-const YEAR=2026, TODAY='6 Nov 2026';
+const G=TruthGuards,isHeading=G.isHeading;
+const YEAR=new Date().getFullYear(), TODAY=new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric'}).format(new Date());
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(_){return false}}};
 let toastT=null,toastUndo=null;
 function toast(m,undo){const t=$('#toast');$('#toastMsg').textContent=m;toastUndo=undo||null;$('#toastAct').classList.toggle('hide',!undo);t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show');toastUndo=null},undo?4500:2300)}
@@ -122,7 +122,7 @@ const SENIORITY=[['Intern / entry',/\b(intern|trainee|graduate|junior|associate)
 /* =================== State =================== */
 const S={step:1,maxStep:1,inputs:{},opts:{pages:'2',tone:'balanced'},provider:'auto',shield:true,aiUsed:false,aiModel:'',aiSug:{},aiLetter:null,
  vault:[],reqs:[],bench:[],signals:[],cls:{},pack:null,changes:[],mode:'balanced',decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},
- generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null};
+ generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null,running:false,stale:false,analysisSignature:'',exported:false};
 const STEPS=['Import','Evidence Vault','Role Intelligence','Evidence Map','Strategy','Review','Design & Test'];
 const STEP_ICONS=['doc','tray','scope','checklist','sliders','review','viewfinder'];
 
@@ -171,14 +171,16 @@ $('#nextBtn').onclick=()=>{
 const F=['company','role','jd','resume','extra','links'];
 function readInputs(){F.forEach(k=>S.inputs[k]=$('#'+k).value.trim());S.inputs.region=$('#region').value}
 function valid(){readInputs();return !!(S.inputs.company&&S.inputs.role&&S.inputs.jd.length>40&&S.inputs.resume.length>80)}
-F.forEach(k=>$('#'+k).addEventListener('input',()=>S.step===1&&renderBar()));
+function inputSignature(){return F.map(k=>$('#'+k).value.trim()).concat($('#region').value,S.opts.pages,S.opts.tone).join('\u241f')}
+function markStale(){if(!S.analysisSignature||inputSignature()===S.analysisSignature)return;S.stale=true;S.maxStep=1;S.decisions={};S.manualFinal=null;renderStepper();renderBar()}
+F.forEach(k=>$('#'+k).addEventListener('input',()=>{markStale();if(S.step===1)renderBar()}));
 $('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar();toast('Sample example loaded — replace it with your own application details')};
-$$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v}));
+$$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v;markStale()}));
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
 const FILE_READS={};
 function loadScript(src){return LIBS[src]||(LIBS[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete LIBS[src];no(new Error('The file reader could not load. Check your connection, or paste the text.'))};document.head.appendChild(s)}))}
-function pdfPageText(c){let line='',y=null,ls=[];c.items.forEach(it=>{const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2){ls.push(line);line=''}line+=(line&&!line.endsWith(' ')&&!it.str.startsWith(' ')?' ':'')+it.str;y=yy;if(it.hasEOL){ls.push(line);line='';y=null}});ls.push(line);return ls.map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n')}
+function pdfPageText(c){let line='',y=null,ls=[],ignored=0;c.items.forEach(it=>{const size=Math.max(Math.abs(it.transform&&it.transform[0]||0),Math.abs(it.transform&&it.transform[3]||0),Number(it.height)||0);if(it.str&&size&&size<6){ignored++;return}const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2){ls.push(line);line=''}line+=(line&&!line.endsWith(' ')&&!it.str.startsWith(' ')?' ':'')+it.str;y=yy;if(it.hasEOL){ls.push(line);line='';y=null}});ls.push(line);return {text:ls.map(l=>l.replace(/\s+/g,' ').trim()).filter(Boolean).join('\n'),ignored}}
 async function ocrPage(page,i,total,k){
   setMsg(k,`Scanned page ${i} of ${total} — Qwen Vision OCR is reading it…`);
   const raw=page.getViewport({scale:2}),scale=Math.min(1,1800/raw.width,2400/raw.height),vp=page.getViewport({scale:2*scale});
@@ -189,6 +191,11 @@ async function ocrPage(page,i,total,k){
   const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`AI OCR failed on page ${i}`);
   return {text:(data.text||'').trim(),model:data.model||'Qwen Vision'};
 }
+/* Scanned pages can only be read by sending the page image to the vision model, before the privacy
+   shield can see the text — so contact details on the page go with it. Ask first; send nothing on "No". */
+function ocrConsent(k,name){return new Promise(done=>{const m=$(`[data-msg="${k}"]`);m.classList.remove('err');
+  m.innerHTML=`<span>${esc(name)} is a scanned (image-only) PDF. To read it, its page images are sent to Qwen Vision OCR — <b>including any name, email or phone number on them</b>, because the privacy shield can only hide contact details after the text is read.</span> <button type="button" class="btn primary sm" data-ocr-consent="yes">Send pages for OCR</button> <button type="button" class="btn ghost sm" data-ocr-consent="no">Don't send</button>`;
+  m.querySelectorAll('[data-ocr-consent]').forEach(b=>b.onclick=()=>{m.textContent='';done(b.dataset.ocrConsent==='yes')});m.querySelector('[data-ocr-consent="yes"]').focus()})}
 async function cloudExtract(file,k){
   setMsg(k,`The browser could not parse ${file.name}. Trying Cloudflare's document recovery…`);
   const form=new FormData();form.append('file',file,file.name);
@@ -201,21 +208,24 @@ async function extractPdf(file,k){
   window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
   let pdf;
   try{pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),stopAtErrors:false,isEvalSupported:false,useSystemFonts:true}).promise}
-  catch(localError){try{const recovered=await cloudExtract(file,k);if(recovered)return {text:recovered,mode:'cloud recovery'}}catch(_){}throw new Error(`This PDF is damaged and neither parser could recover it. Re-export it with “Print to PDF” and upload again. (${localError.message})`)}
-  const out=[],ocr=[];let scanned=0;
+  catch(localError){if(localError&&(/password/i.test(localError.name)||/password/i.test(localError.message)))throw new Error('This PDF is password-protected. Remove the password or export an unlocked copy, then upload it again.');try{const recovered=await cloudExtract(file,k);if(recovered)return {text:recovered,mode:'cloud recovery'}}catch(_){}throw new Error(`This PDF is damaged and neither parser could recover it. Re-export it with “Print to PDF” and upload again. (${localError.message})`)}
+  const out=[],ocr=[];let scanned=0,consented=false,ignored=0;
   for(let i=1;i<=pdf.numPages;i++){
     setMsg(k,`Reading page ${i} of ${pdf.numPages}…`);const page=await pdf.getPage(i);let text='';
-    try{text=pdfPageText(await page.getTextContent({disableCombineTextItems:false}))}catch(_){}
-    if(words(text)<3){scanned++;if(scanned>25)throw new Error('This scanned PDF has more than 25 image-only pages. Split it into smaller files and upload the relevant pages.');const result=await ocrPage(page,i,pdf.numPages,k);text=result.text;if(result.model)ocr.push(result.model)}
+    try{const parsed=pdfPageText(await page.getTextContent({disableCombineTextItems:false}));text=parsed.text;ignored+=parsed.ignored}catch(_){}
+    if(words(text)<3){scanned++;if(scanned>25)throw new Error('This scanned PDF has more than 25 image-only pages. Split it into smaller files and upload the relevant pages.');
+      if(!consented){if(!await ocrConsent(k,file.name))throw new Error('Scanned PDF not read — nothing was sent. Paste your résumé text instead, or upload a text-based PDF or Word file.');consented=true}
+      const result=await ocrPage(page,i,pdf.numPages,k);text=result.text;if(result.model)ocr.push(result.model)}
     out.push(text);
   }
   let text=out.filter(Boolean).join('\n\n').trim();
   if(!text){text=await cloudExtract(file,k);if(text)return {text,mode:'cloud recovery'}}
-  return {text,mode:ocr.length?`AI OCR · ${ocr[0]}`:'local text extraction'};
+  return {text,mode:(ocr.length?`AI OCR · ${ocr[0]}`:'local text extraction')+(ignored?` · ${ignored} tiny hidden-like text item${ignored>1?'s':''} ignored`:''),pages:pdf.numPages};
 }
+function docxText(html){const doc=new DOMParser().parseFromString(html,'text/html'),out=[];doc.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,tr').forEach(el=>{if(el.matches('p')&&el.closest('li'))return;let t=el.textContent.replace(/\s+/g,' ').trim();if(!t)return;if(el.matches('li'))t='• '+t;else if(/^H[1-6]$/.test(el.tagName))t=t.toUpperCase();out.push(t)});return out.join('\n')}
 async function extract(file,ext,k){
   if(ext==='pdf')return extractPdf(file,k);
-  if(ext==='docx'){await loadScript(CDN+'mammoth/1.8.0/mammoth.browser.min.js');return (await window.mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()})).value}
+  if(ext==='docx'){await loadScript(CDN+'mammoth/1.8.0/mammoth.browser.min.js');const r=await window.mammoth.convertToHtml({arrayBuffer:await file.arrayBuffer()});return {text:docxText(r.value),mode:'Word extraction · verify header/footer contact details'}}
   const t=await file.text();return /^html?$/.test(ext)?new DOMParser().parseFromString(t,'text/html').body.innerText:t;
 }
 function readFile(file,k){
@@ -226,7 +236,7 @@ function readFile(file,k){
   extract(file,ext,k).then(result=>{const mode=result&&typeof result==='object'?result.mode:'';let t=result&&typeof result==='object'?result.text:result;t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
     if(FILE_READS[k]!==token)return;
     if(!t)throw new Error(ext==='pdf'?'No readable text was found after local extraction and AI OCR.':'No readable text found.');
-    $('#'+k).value=t;setMsg(k,`✓ ${file.name} — ${words(t)} words · ${mode||'read in your browser'}. Check the text before continuing.`);renderBar()}).catch(e=>{if(FILE_READS[k]===token)setMsg(k,e.message||'Could not read that file.',true)});
+    $('#'+k).value=t;const long=t.length>15000||(result&&result.pages>4);setMsg(k,`${long?'⚠':'✓'} ${file.name} — ${words(t)} words${result&&result.pages?` · ${result.pages} pages`:''} · ${mode||'read in your browser'}. ${long?'Long document: only the most relevant text is sent for analysis. Review the extraction carefully.':'Check the text before continuing.'}`,long);markStale();renderBar()}).catch(e=>{if(FILE_READS[k]===token)setMsg(k,e.message||'Could not read that file.',true)});
 }
 $$('input[type=file]').forEach(i=>i.addEventListener('change',e=>{readFile(e.target.files[0],i.dataset.for);e.target.value=''}));
 $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>readFile(e.dataTransfer.files[0],k))});
@@ -235,12 +245,13 @@ $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEac
 function buildVault(resume,extra,links){
   const V=[],cnt={R:0,E:0,T:0,D:0,S:0,X:0,O:0,C:0},id=k=>k+(++cnt[k]);
   let sec='header',role=null,first=true;
-  for(const raw of resume.split('\n')){const l=raw.trim();if(!l)continue;
+  const lines=resume.split('\n').map(x=>x.trim()).filter(Boolean);
+  for(let i=0;i<lines.length;i++){const l=lines[i];
     if(first){V.push({id:'N1',type:'name',text:l,locked:true,src:'Résumé'});first=false;continue}
-    if(isHeading(l)){sec=/summary|profile|about/i.test(l)?'summary':/skill|tool|competenc/i.test(l)?'skills':/experience|employment|work history|career/i.test(l)?'exp':/education|qualification|certif/i.test(l)?'edu':'other';role=null;continue}
-    if(sec==='header'){V.push({id:id('C'),type:'contact',text:l,src:'Résumé'});continue}
-    const m=!/^[•\-*]/.test(l)&&l.match(/^(.+?)\s+[—–-]\s+(.+?)\s*\|\s*(.+)$/);
-    if(m){role={id:id('R'),type:'role',title:m[1].trim(),employer:m[2].trim(),dates:m[3].trim(),text:l,locked:true,src:'Résumé'};V.push(role);continue}
+    if(isHeading(l)){sec=/summary|profile|about|objective/i.test(l)?'summary':/skill|tool|competenc|expertise/i.test(l)?'skills':/experience|employment|work history|career|history/i.test(l)?'exp':/education|qualification|certif|licen/i.test(l)?'edu':'other';role=null;continue}
+    if(sec==='header'){V.push({id:id('C'),type:'contact',text:l,locked:true,src:'Résumé'});continue}
+    const m=!['edu','skills','summary'].includes(sec)&&G.parseRole(l,lines[i+1]);
+    if(m){role={id:id('R'),type:'role',title:m.title,employer:m.employer,dates:m.dates,text:m.usesNext?l+'\n'+lines[i+1]:l,locked:true,src:'Résumé'};V.push(role);if(m.usesNext)i++;continue}
     const t=l.replace(/^[•\-*]\s*/,'');
     if(sec==='summary')V.push({id:id('S'),type:'summary',text:t,src:'Résumé'});
     else if(sec==='skills')V.push({id:id('T'),type:'tools',text:t,src:'Résumé'});
@@ -270,6 +281,7 @@ function renderVault(){
   $('#vaultSum').innerHTML=`<div class="stat"><b>${roles.length}</b><span>Roles · facts locked</span></div><div class="stat"><b>${ach.length+V.filter(v=>v.type==='extra'||v.type==='answer').length}</b><span>Achievement records</span></div><div class="stat g"><b>${met.length}</b><span>Records with metrics</span></div><div class="stat ${conf===total?'g':'a'}"><b>${conf}/${total}</b><span>Confirmed by you</span></div>`;
   const recRow=r=>{const f=freshness(r);return `<div class="rec" id="v-${r.id}"><span class="rid">${r.id}</span><div><p>${esc(r.text)}</p><div class="meta">${r.metrics&&r.metrics.length?`<span class="tag t-ok">${r.metrics.length} metric${r.metrics.length>1?'s':''}</span>`:''}<span class="tag ${r.src==='Résumé'?'t-nice':r.src==='Your answer'?'t-ok':'t-gate'}">${esc(r.src)}</span>${f?`<span class="tag ${f.ok?'t-nice':'t-med'}">${esc(f.t)}</span>`:''}${r.locked?`<span class="tag t-gate">${ic('lock')} Locked</span>`:''}</div></div>${r.type==='link'?'':`<button class="confirm" data-conf="${r.id}" aria-pressed="${!!r.confirmed}">${ic(r.confirmed?'check-fill':'circle')} ${r.confirmed?'Confirmed':'Confirm'}</button>`}</div>`};
   let html='<div class="card-h"><div><h2>Evidence records</h2><p>Grouped as they appear in your résumé.</p></div></div>';
+  if(!roles.length)html+=`<div class="notice amber" role="alert">${ic('warn-fill')}<div><b>We couldn't find any jobs in your résumé.</b> Without them, titles, employers and dates can't be locked. Put each job on its own line with its dates — for example “Product Designer — Acme | 2020 – Present” — then go back to Import and run the analysis again.</div></div>`;
   const head=V.filter(v=>v.type==='name');head.forEach(r=>html+=`<div class="role"><div class="role-h"><div><b>${esc(r.text)}</b><div class="facts"><span class="fact">Name <button class="lock ${r.locked?'on':''}" data-lock="${r.id}" aria-label="${r.locked?'Unlock':'Lock'} name">${ic(r.locked?'lock':'unlock')}</button></span></div></div></div></div>`);
   const grp=(title,items)=>items.length?`<div class="role"><div class="role-h"><b>${title}</b></div>${items.map(recRow).join('')}</div>`:'';
   html+=grp('Summary',V.filter(v=>v.type==='summary'));html+=grp('Skills & tools',V.filter(v=>v.type==='tools'));
@@ -302,17 +314,17 @@ function renderAIStatus(){
   const names=AI_MODELS?[AI_MODELS.available.anthropic&&'Anthropic',AI_MODELS.available.openai&&'OpenAI',AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
   const msg=off?'Offline engine selected — no AI is used.':live?`Connected securely${names.length?` · ${names.join(', ')}`:''}. TruthFit guardrails re-check every answer.`:SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
-  const selected=selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
-  $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`Active model: ${selected}. Text is privacy-filtered; scanned pages use secure Qwen Vision OCR.`:'AI unavailable · the offline engine will be used.';
+  const selected=S.aiUsed&&S.aiModel?S.aiModel:selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
+  $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`${S.aiUsed?'Model used':'Active model'}: ${selected}. Text is privacy-filtered; scanned pages use secure Qwen Vision OCR.`:'AI unavailable · the offline engine will be used.';
   $('#letterAI').classList.toggle('hide',!live);
   if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=!!AI_MODELS.available[row.dataset.provider];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }
-const EMAILg=/[\w.+-]+@[\w-]+\.[\w.]+/g,PHONEg=/\+?\d[\d\s-]{8,}\d/g;
-const shieldT=t=>S.shield?t.replace(EMAILg,'[email hidden]').replace(PHONEg,'[phone hidden]'):t;
+const candidateName=()=>(S.vault.find(v=>v.type==='name')||{}).text||'';
+const shieldT=t=>S.shield?G.shield(t,{name:candidateName(),hiddenLines:S.vault.filter(v=>v.type==='name'||v.type==='contact').map(v=>v.text)}):t;
 function parseJSON(t){try{return JSON.parse(t)}catch(_){}const m=t.match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1])}catch(_){}}const i=t.indexOf('{'),j=t.lastIndexOf('}');if(i>-1&&j>i){try{return JSON.parse(t.slice(i,j+1))}catch(_){}}return null}
 function aiPrompt(){
   const I=S.inputs;
-  const vault=S.vault.filter(v=>!['contact','link','name'].includes(v.type)).map(v=>`${v.id} [${v.type}${v.parent?' at '+v.parent:''}${v.src!=='Résumé'?' · '+v.src:''}]: ${v.type==='role'?`${v.title} — ${v.employer} | ${v.dates}`:v.text}`).join('\n');
+  const vault=S.vault.filter(v=>!['contact','link','name'].includes(v.type)).map(v=>`${v.id} [${v.type}${v.parent?' at '+v.parent:''}${v.src!=='Résumé'?' · '+v.src:''}]: ${shieldT(v.type==='role'?`${v.title} — ${v.employer} | ${v.dates}`:v.text)}`).join('\n');
   return `You are the analysis engine of TruthFit, a truth-first résumé tailoring tool. A candidate is applying for "${I.role}" at "${I.company}" (region: ${I.region}; tone: ${S.opts.tone}; target length: ${S.opts.pages} page(s)).
 
 ABSOLUTE RULES
@@ -328,7 +340,7 @@ RÉSUMÉ (verbatim; contact details hidden)
 """${shieldT(I.resume).slice(0,18000)}"""
 
 EVIDENCE VAULT (cite these IDs exactly)
-${vault}
+${vault.slice(0,22000)}
 
 TASKS
 A. classification: family = one of [${FAMILIES.map(f=>'"'+f[1]+'"').join(', ')}]; seniority = one of [${SENIORITY.map(s=>'"'+s[0]+'"').join(', ')}]; function (1–2 words); industry (short, or "").
@@ -355,12 +367,14 @@ function applyAI(j){
     if(type==='replace'&&!S.inputs.resume.includes(before)){const alt=S.inputs.resume.split('\n').find(l=>l.trim()&&norm(l)===norm(before));if(alt)before=alt.trim();else type='add'}
     const lockRole=type==='replace'?roles.find(r=>before.includes(r.title)&&before.includes(r.employer)):null;
     return {id:'a'+i,title:String(c.title||'Proposed change'),type,before:type==='replace'?before:'',after:type==='add'?polish(String(c.after||'')):String(c.after||''),heading:type==='add'?(String(c.heading||'ADDITIONAL EXPERIENCE').toUpperCase().replace(/[^A-Z &/]/g,'').trim()||'ADDITIONAL EXPERIENCE'):undefined,
-      targets:(c.targets||[]).map(t=>'q'+t).filter(t=>S.reqs.some(r=>r.id===t)),cites:(c.cites||[]).filter(x=>ids.has(x)),origin:(c.origin||['vac']).filter(o=>['vac','bench','company'].includes(o)),basis:['direct','inference'].includes(c.basis)?c.basis:'inference',risk:c.risk==='med'||c.basis==='inference'?'med':'low',claim:c.claim||'',why:c.why||'',variants:c.variants&&typeof c.variants==='object'?c.variants:null,lock:lockRole?lockRole.id:undefined}}).filter(c=>c.after.trim());
-  S.changes.forEach(c=>{if(!c.origin.length)c.origin=['vac'];if(c.lock)c.basis='mirror'});
+      targets:(c.targets||[]).map(t=>'q'+t).filter(t=>S.reqs.some(r=>r.id===t)),cites:(c.cites||[]).filter(x=>ids.has(x)),origin:(c.origin||[]).filter(o=>['vac','bench'].includes(o)||(o==='company'&&S.signals.length)),basis:['direct','inference'].includes(c.basis)?c.basis:'inference',risk:c.risk==='med'||c.basis==='inference'?'med':'low',claim:c.claim||'',why:c.why||'',variants:c.variants&&typeof c.variants==='object'?c.variants:null,lock:lockRole?lockRole.id:undefined}}).filter(c=>c.after.trim());
+  S.changes.forEach(c=>{if(!c.origin.length)c.origin=['infer'];if(c.lock)c.basis='mirror'});
   S.aiSug={};Object.entries(j.gapSuggestions||{}).forEach(([k,v])=>{const r=S.reqs[+k];if(r&&Array.isArray(v))S.aiSug[r.id]=v.slice(0,3).map(s=>({angle:String(s.angle||'Suggested'),basis:ids.has(s.basis)?s.basis:'Template',text:String(s.text||'')})).filter(s=>s.text)});
 }
 async function startAnalysis(){
+  if(S.running)return;
   if(!valid()){toast('Fill in the required fields first');const f=F.slice(0,4).find(k=>!S.inputs[k]);if(f)$('#'+f).focus();return}
+  S.running=true;$('#nextBtn').disabled=true;S.analysisSignature=inputSignature();S.stale=false;S.exported=false;
   const I=S.inputs;
   S.generic=!(norm(I.resume)===norm(EX.resume)&&norm(I.jd)===norm(EX.jd));
   Object.assign(S,{decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},manualFinal:null,maxStep:1,filter:'all',rfilter:'all',aiUsed:false,aiModel:'',aiSug:{},aiLetter:null});
@@ -381,20 +395,20 @@ async function startAnalysis(){
     [useAI?`${activeModel}: reading the vacancy & your vault`:'Classifying role, seniority & industry',()=>`${S.cls.fn} · ${S.cls.seniority}${S.cls.industry?' · '+S.cls.industry:''}`],
     ['Loading role benchmark pack',()=>S.pack?S.pack.name:'No pack yet — vacancy only'],
     ['Company research',()=>S.signals.length?`${S.signals.length} cited insights`:'Live web research runs in the working tool'],
-    [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>flags(c.after).length||c.lock).length} changes flagged`]
+    [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>check(c,afterOf(c)).blocked).length} changes blocked`]
   ];
   $('#stages').innerHTML=stagesDef.map((s,i)=>`<li class="stage" data-i="${i}"><span class="ico2">${ic('circle')}</span><span>${esc(s[0])}</span><small></small></li>`).join('');
-  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 15–45 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
+  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 30–90 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
   const d=reduce?0:1,done=(i)=>{const li=$(`.stage[data-i="${i}"]`);li.classList.remove('active');li.classList.add('done');li.querySelector('.ico2').innerHTML=ic('check-fill');li.querySelector('small').textContent=stagesDef[i][1]();$('#ovBar').style.width=((i+1)/stagesDef.length*100)+'%'};
   const act=i=>$(`.stage[data-i="${i}"]`).classList.add('active');
   for(const i of [0,1]){act(i);if(i===1)$$('#cloudB .frag').forEach((f,j)=>setTimeout(()=>f.classList.add('in'),j*50*d));await sleep(reduce?80:500);done(i)}
   act(2);
   if(useAI){
-    const ctl=new AbortController();let stopReason='',timer=setTimeout(()=>{stopReason='timeout';ctl.abort()},45000);S.aiCtl=ctl;$('#ovStop').classList.remove('hide');$('#ovStream').classList.remove('hide');$('#ovStream').textContent='Thinking…';
+    const ctl=new AbortController();let stopReason='',timer=setTimeout(()=>{stopReason='timeout';ctl.abort()},150000);S.aiCtl=ctl;$('#ovStop').classList.remove('hide');$('#ovStream').classList.remove('hide');$('#ovStream').textContent='Thinking…';
     $('#ovStop').onclick=()=>{stopReason='user';ctl.abort()};
     try{
       const res=await SAMPLE(aiPrompt(),{signal:ctl.signal,onText:({text})=>{$('#ovStream').textContent=text.slice(-260);$('#ovTitle').textContent=`TruthFit AI is writing… ${Math.round(text.length/100)/10}k characters`}});
-      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=`${res.provider} · ${res.modelApplied}`;S.generic=false;
+      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=MODEL_NAME;S.generic=false;renderAIStatus();
     }catch(e){
       offline();const c=e&&e.code;
       toast(stopReason==='user'?'Stopped — using the offline engine':stopReason==='timeout'?'The AI took too long — continuing with the offline engine':c==='not_granted'?'AI access wasn\'t allowed — using the offline engine':c==='rate_limited'?'The AI usage limit was reached — using the offline engine for now':'The AI answer couldn\'t be used — falling back to the offline engine');
@@ -409,7 +423,7 @@ async function startAnalysis(){
   for(const i of [3,4,5]){act(i);if(i===5){$('#bridge').classList.add('live');$$('#cloudA .frag').forEach((f,j)=>setTimeout(()=>{const r=S.reqs.find(x=>x.id===f.dataset.r);f.classList.add(r.status==='proven'?'ok':r.status==='partial'?'part':'no')},j*70*d))}await sleep(reduce?80:480);done(i)}
   $('#pulse').classList.remove('run');$('#ovTitle').textContent=S.aiUsed?`Analysed by ${S.aiModel}`:'Your evidence vault is ready';
   S.before=score(I.resume,'before');
-  await sleep(reduce?80:700);ov.classList.add('hide');go(2);
+  await sleep(reduce?80:700);ov.classList.add('hide');S.running=false;$('#nextBtn').disabled=false;go(2);
 }
 
 /* =================== Role intelligence =================== */
@@ -482,10 +496,9 @@ function genericReqs(){
   return uniq.map((x,i)=>{
     const rf=fam(toks(x.text)),rt=[...rf].filter(t=>t===t.toLowerCase());let best=null,bs=0;
     pool.forEach(p=>{let o=0;rf.forEach(t=>{if(p.t.has(t))o++});if(o>bs){bs=o;best=p.v}});
-    const ratio=bs/Math.max(rf.size,1),status=(ratio>=.6||bs>=3)?'proven':bs>=1?'partial':'gap';
+    const ratio=bs/Math.max(rf.size,1),gate=/degree|bachelor|master|certif|licen[cs]e|chartered|cpa|pmp/i.test(x.text)?'Credential gate':/\d+\+?\s*years/i.test(x.text)?'Experience gate':/visa|work permit|authori[sz]ed to work|clearance/i.test(x.text)?'Legal gate':null,credentialOk=!gate||gate!=='Credential gate'||(best&&best.type==='edu'),status=credentialOk&&((ratio>=.6&&bs>=2)||bs>=3)?'proven':credentialOk&&bs>=2?'partial':'gap';
     const w=x.text.split(/\s+/),label=x.list||w.length<=7?x.text.replace(/^\w/,c=>c.toUpperCase()):w.slice(0,7).join(' ')+'…';
     const kw=x.list?[norm(x.text)]:rt.filter(t=>t.length>3).slice(0,2);
-    const gate=/degree|bachelor|master|certif|licen[cs]e|chartered|cpa|pmp/i.test(x.text)?'Credential gate':/\d+\+?\s*years/i.test(x.text)?'Experience gate':/visa|work permit|authori[sz]ed to work|clearance/i.test(x.text)?'Legal gate':null;
     return {id:'g'+i,label,priority:x.priority,status,match:status==='gap'?null:status==='proven'&&ratio>=.6?'direct':'transferable',gate,kw:kw.length?kw:[norm(x.text).slice(0,12)],ev:status==='gap'?'':best.text,
       question:`The role asks for “${label.replace(/…$/,'')}”. Do you have direct experience? Describe one example — what you did, the scope and the result.`};
   });
@@ -611,11 +624,12 @@ const EX_CHANGES=[
 function genericChanges(){
   const I=S.inputs,lines=I.resume.split('\n'),proven=S.reqs.filter(r=>r.status==='proven'),out=[];
   const top=[];proven.map(r=>r.label.replace(/…$/,'').toLowerCase()).forEach(l=>{if(top.length<4&&!top.some(t=>t.includes(l)||l.includes(t)))top.push(l)});
-  const sRec=S.vault.find(v=>v.type==='summary'),newSum=`${I.role} with verified experience in ${top.length?top.join(', '):'the core requirements of this role'}.`;
-  if(sRec)out.push({id:'x1',title:'Align the summary to the role',type:'replace',targets:proven.slice(0,4).map(r=>r.id),before:sRec.text,after:newSum+' '+sRec.text,cites:[sRec.id,...proven.slice(0,3).map(r=>r.rec).filter(Boolean)],origin:['vac'],basis:'direct',risk:'low',why:'Leads with the job title and requirements your vault already proves.'});
+  const must=S.reqs.filter(r=>r.priority==='must'),sRec=S.vault.find(v=>v.type==='summary'),newSum=G.alignedSummary(I.role,top,must.filter(r=>r.status==='proven').length,must.length);
+  if(!newSum){/* weak match: never rewrite the summary towards a role the evidence doesn't support */}
+  else if(sRec)out.push({id:'x1',title:'Align the summary to the role',type:'replace',targets:proven.slice(0,4).map(r=>r.id),before:sRec.text,after:newSum+' '+sRec.text,cites:[sRec.id,...proven.slice(0,3).map(r=>r.rec).filter(Boolean)],origin:['vac'],basis:'direct',risk:'low',why:'Leads with the job title and requirements your vault already proves.'});
   else out.push({id:'x1',title:'Add a role-aligned summary',type:'top',heading:'PROFESSIONAL SUMMARY',targets:proven.slice(0,4).map(r=>r.id),before:'',after:newSum,cites:proven.slice(0,3).map(r=>r.rec).filter(Boolean),origin:['vac'],basis:'direct',risk:'low',why:'Recruiters and ATS read the top third first.'});
   const short=proven.filter(r=>r.label.split(' ').length<=4).map(r=>r.label),tRec=S.vault.find(v=>v.type==='tools');
-  if(short.length){if(tRec)out.push({id:'x2',title:'Lead the skills section with the role\'s language',type:'replace',targets:proven.filter(r=>short.includes(r.label)).map(r=>r.id),before:tRec.text,after:short.join(' · ')+'\n'+tRec.text,cites:[tRec.id,...proven.filter(r=>short.includes(r.label)).map(r=>r.rec).filter(Boolean)].slice(0,5),origin:['vac'],basis:'direct',risk:'low',why:'ATS systems scan for exact phrases from the vacancy.'});
+  if(short.length&&newSum){if(tRec)out.push({id:'x2',title:'Lead the skills section with the role\'s language',type:'replace',targets:proven.filter(r=>short.includes(r.label)).map(r=>r.id),before:tRec.text,after:short.join(' · ')+'\n'+tRec.text,cites:[tRec.id,...proven.filter(r=>short.includes(r.label)).map(r=>r.rec).filter(Boolean)].slice(0,5),origin:['vac'],basis:'direct',risk:'low',why:'ATS systems scan for exact phrases from the vacancy.'});
     else out.push({id:'x2',title:'Add a skills section in the role\'s language',type:'add',heading:'SKILLS',targets:proven.filter(r=>short.includes(r.label)).map(r=>r.id),before:'',after:short.join(' · '),cites:proven.filter(r=>short.includes(r.label)).map(r=>r.rec).filter(Boolean).slice(0,5),origin:['vac'],basis:'direct',risk:'low',why:'ATS systems scan for exact phrases from the vacancy.'})}
   const firstRole=S.vault.find(v=>v.type==='role');
   if(firstRole&&!/^design manager$|^senior|^lead/i.test(firstRole.title)&&norm(firstRole.title)!==norm(I.role))out.push({id:'x3',title:'Retitle your latest role to match the vacancy',type:'replace',targets:[],before:firstRole.text,after:firstRole.text.replace(firstRole.title,I.role),cites:[firstRole.id],origin:['vac'],basis:'mirror',risk:'low',lock:firstRole.id,why:'Exact title matches can help scans — but titles are protected facts.'});
@@ -630,7 +644,15 @@ function visibleChanges(){return allChanges().filter(c=>S.mode!=='conservative'|
 function afterOf(c){if(S.edits[c.id]!=null)return S.edits[c.id];if(c.variants&&(S.mode==='executive'||S.mode==='technical')&&c.variants[S.mode])return String(c.variants[S.mode]);if(c.after==='@summary')return SUM[S.mode==='executive'?'executive':S.mode==='technical'?'technical':'default'];return c.after}
 function srcText(){return [S.inputs.resume,S.inputs.extra,...S.vault.filter(v=>v.type==='answer').map(v=>v.text)].join('\n')}
 function flags(t){const src=new Set(nums(srcText()));return [...new Set(nums(t))].filter(n=>!src.has(n))}
-function lockViolation(c,a){if(!c.lock)return null;const r=rec(c.lock);if(!r||!r.locked)return null;if(c.before.includes(r.title)&&!a.includes(r.title))return r;return null}
+function lockViolation(c,a){return G.lockViolations(c.before,a,S.vault)[0]||null}
+/* Every guardrail for one change, computed locally — the model's own risk/basis labels are never trusted. */
+function check(c,a){
+  const lock=lockViolation(c,a),nums=flags(a),cites=(c.cites||[]).filter(id=>rec(id)),uncited=!cites.length;
+  const ev=[c.before,srcText(),...cites.map(id=>rec(id).text),...(c.targets||[]).map(t=>S.reqs.find(r=>r.id===t)).filter(r=>r&&statusOf(r)!=='gap'&&statusOf(r)!=='skipped').map(r=>r.label+' '+r.kw.join(' '))].join('\n');
+  const u=G.unsupported(a,ev),blocked=!!(lock||nums.length||u.names.length||uncited);
+  const risk=blocked?'high':(u.words.length||c.claim||c.basis==='inference')?'med':'low';
+  return {lock,nums,uncited,names:u.names,words:u.words,blocked,risk};
+}
 const GENERIC=['results-driven','results driven','dynamic','passionate','proven track record','team player','go-getter','detail-oriented','hard-working','synergy','think outside the box','self-starter','culture of excellence','best-in-class','value-add','fast-paced','wear many hats'];
 const SUPER=['world-class','unparalleled','exceptional','outstanding','extraordinary','unmatched','visionary','best'];
 const AIPAT=['fostering','leveraging','leverage','spearheaded','delve','showcasing','a testament to','seamlessly','robust','cutting-edge',"in today's",'pivotal','meticulous','tapestry','elevate'];
@@ -651,47 +673,51 @@ function renderChanges(){
   $('#aiNote').classList.toggle('hide',!S.aiUsed);if(S.aiUsed)$('#aiNote').innerHTML=`${ic('sparkles')}<div><b>Proposed by ${esc(S.aiModel)}.</b> Every suggestion is then re-checked by TruthFit: numbers against your vault, locked facts, and authenticity. The AI can't bypass these checks.</div>`;
   const all=visibleChanges(),acc=all.filter(c=>S.decisions[c.id]==='accepted').length,rej=all.filter(c=>S.decisions[c.id]==='rejected').length,hid=allChanges().length-all.length;
   $('#chgCounts').innerHTML=`<span class="tag t-ok">${ic('check')}${acc} accepted</span><span class="tag t-rej">${rej} rejected</span><span class="tag t-med">${all.length-acc-rej} pending</span><span class="tag t-nice">${modeObj().name}</span>`;
-  $('#hiddenNote').textContent=hid?`${hid} suggestion${hid>1?'s are':' is'} hidden by the ${modeObj().name} strategy. Change strategy in step 5 to see ${hid>1?'them':'it'}.`:'';
+  const mustR=S.reqs.filter(r=>r.priority==='must'),mustP=mustR.filter(r=>statusOf(r)==='proven').length,weak=mustR.length&&mustP/mustR.length<.5;
+  $('#hiddenNote').textContent=(weak?`Weak match: only ${mustP} of ${mustR.length} required items have evidence, so TruthFit won't reword your résumé toward this role. `:'')+(hid?`${hid} suggestion${hid>1?'s are':' is'} hidden by the ${modeObj().name} strategy. Change strategy in step 5 to see ${hid>1?'them':'it'}.`:'');
   const lbl=id=>{const r=S.reqs.find(x=>x.id===id);return r?r.label.replace(/…$/,'').split(' — ')[0]:''};
-  $('#chgList').innerHTML=all.map(c=>{const a=afterOf(c),f=flags(a),au=authCheck(a),lk=lockViolation(c,a),d=S.decisions[c.id]||'',ed=S.editing[c.id];
-    const risk=lk||f.length?'high':c.risk,riskL=lk?'Fact locked':f.length?'Blocked':risk==='med'?'Check claim':'Low risk';
-    const blocked=!!(lk||f.length);
+  $('#chgList').innerHTML=all.map(c=>{const a=afterOf(c),k=check(c,a),f=k.nums,au=authCheck(a),lk=k.lock,d=S.decisions[c.id]||'',ed=S.editing[c.id];
+    const risk=k.risk,riskL=lk?'Fact locked':k.blocked?'Blocked':risk==='med'?'Check claim':'Low risk';
+    const blocked=k.blocked;
     return `<article class="chg ${d} ${d==='accepted'?'mini':''}" data-id="${c.id}">
      <div class="chg-h"><h3>${esc(c.title)}</h3><span class="tag ${risk==='high'?'t-high':risk==='med'?'t-med':'t-low'}">${riskL}</span>${au.length?`<span class="tag t-med">${au.length} authenticity flag${au.length>1?'s':''}</span>`:''}${d==='accepted'?`<span class="tag t-ok">${ic('check')} Accepted</span>`:d==='rejected'?'<span class="tag t-rej">Rejected</span>':''}</div>
      <div class="chg-b">
       ${ed?`<div class="edit-box"><label class="lbl" for="ed-${c.id}">Edit the proposed text</label><textarea id="ed-${c.id}" style="min-height:84px">${esc(a)}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary sm" data-a="save">Save edit</button><button class="btn ghost sm" data-a="cancel">Cancel</button>${S.edits[c.id]!=null?'<button class="btn ghost sm" data-a="revert">Revert to AI version</button>':''}</div></div>`:
       `<div class="diff"><div class="bf ${c.before?'':'empty'}"><span class="k">Before</span>${c.before?esc(c.before).replace(/\n/g,'<br>'):'New line — nothing replaced'}</div><div class="af"><span class="k">After${S.edits[c.id]!=null?' · edited by you':''}</span>${hl(a,f,au)}</div></div>`}
-      ${lk?`<div class="notice red">${ic('lock')}<div><b>Protected fact:</b> your official title at ${esc(lk.employer)} is “${esc(lk.title)}”. Employers, titles, dates and qualifications are locked, so this can't be accepted. Put the target title in your summary instead.</div></div>`:''}
+      ${lk?`<div class="notice red">${ic('lock')}<div><b>Protected fact:</b> this would change ${lk.missing.map(x=>`“${esc(x)}”`).join(', ')}${lk.rec.type==='role'?` in your ${esc(lk.rec.employer)} role`:''}. Employers, titles, dates, qualifications and your name and contact lines are locked, so this can't be accepted.${lk.rec.type==='role'?' Put the target title in your summary instead.':''}</div></div>`:''}
       ${f.length?`<div class="notice red">${ic('xmark-fill')}<div><b>Fabrication alarm:</b> ${f.map(n=>`<b>${esc(n)}</b>`).join(', ')} ${f.length>1?'don\'t':'doesn\'t'} appear in any vault record. Edit to use your real numbers before accepting.</div></div>`:''}
-      ${!f.length&&!lk&&c.claim?`<div class="notice amber">${ic('warn-fill')}<div><b>Check this claim:</b> ${esc(c.claim)}</div></div>`:''}
+      ${k.names.length?`<div class="notice red">${ic('xmark-fill')}<div><b>Not in your evidence:</b> ${k.names.map(n=>`<b>${esc(n)}</b>`).join(', ')} ${k.names.length>1?'don\'t':'doesn\'t'} appear in your résumé, extra evidence or answers. Names, tools, employers and credentials can only come from you — edit them out, or add the evidence in step 4 first.</div></div>`:''}
+      ${k.uncited?`<div class="notice red">${ic('xmark-fill')}<div><b>No proof cited:</b> this change doesn't point to any record in your vault, so it can't be accepted.</div></div>`:''}
+      ${!k.blocked&&k.words.length?`<div class="notice amber">${ic('warn-fill')}<div><b>New wording to check:</b> ${k.words.map(w=>`“${esc(w)}”`).join(', ')} ${k.words.length>1?'aren\'t':'isn\'t'} in your evidence. Accept only if it's true.</div></div>`:''}
+      ${!k.blocked&&c.claim?`<div class="notice amber">${ic('warn-fill')}<div><b>Check this claim:</b> ${esc(c.claim)}</div></div>`:''}
       ${au.length?`<div class="notice amber">${ic('sparkles')}<div><b>Authenticity:</b> ${au.map(x=>`${esc(x.k)} — “${esc(x.p)}”`).join('; ')}. Recruiters skim past language like this; say what you specifically did.</div></div>`:''}
       <div class="whybox"><b>Why</b><span>${esc(c.why)}</span><b>Source</b><span class="row">${c.origin.map(o=>`<span class="tag ${OL[o][1]}">${ic(OL[o][2])}${OL[o][0]}</span>`).join('')}</span><b>Proof</b><span class="row">${c.cites.filter(Boolean).map(id=>{const r=rec(id);return `<button class="cite" data-v="${id}" title="${esc(r?r.text:'')}">${id}${r?' · '+esc(vaultLabel(r)):''}</button>`}).join(' ')}</span><b>Targets</b><span>${c.targets.map(lbl).filter(Boolean).map(esc).join(' · ')||'—'}</span></div>
      </div>
-     <div class="chg-f"><span class="why">${c.basis==='inference'?ic('info')+'Adds context not in your vault.':c.basis==='mirror'?ic('lock')+'Copies vacancy wording into a protected fact.':ic('tray')+'Uses only facts from your vault.'}</span>
-      ${ed?'':d==='accepted'?`<span class="hint" style="margin:0 auto 0 0">${esc(a.split('\n')[0].slice(0,90))}${a.length>90?'…':''}</span><button class="btn plain sm" data-a="undo">${ic('undo')} Undo</button>`:`<button class="btn ghost sm" data-a="edit">${ic('pencil')} Edit</button><button class="btn ghost sm" data-a="reject" ${d==='rejected'?'disabled':''}>Reject</button><button class="btn ${blocked?'line':'primary'} sm" data-a="accept" ${blocked?'disabled':''}>${lk?ic('lock')+' Locked':f.length?'Fix Numbers to Accept':'Accept'}</button>`}
+     <div class="chg-f"><span class="why">${lk||c.basis==='mirror'?ic('lock')+'Changes a protected fact.':k.blocked?ic('xmark-fill')+'Not supported by your vault.':k.risk==='med'?ic('info')+'Adds context not in your vault.':ic('tray')+'Uses only facts from your vault.'}</span>
+      ${ed?'':d==='accepted'?`<span class="hint" style="margin:0 auto 0 0">${esc(a.split('\n')[0].slice(0,90))}${a.length>90?'…':''}</span><button class="btn plain sm" data-a="undo">${ic('undo')} Undo</button>`:`<button class="btn ghost sm" data-a="edit">${ic('pencil')} Edit</button><button class="btn ghost sm" data-a="reject" ${d==='rejected'?'disabled':''}>Reject</button><button class="btn ${blocked?'line':'primary'} sm" data-a="accept" ${blocked?'disabled':''}>${lk?ic('lock')+' Locked':f.length?'Fix Numbers to Accept':k.blocked?'Needs Evidence':'Accept'}</button>`}
      </div></article>`}).join('');
   renderBar();
 }
 $('#chgList').addEventListener('click',e=>{
   const b=e.target.closest('[data-a]');if(!b)return;const card=b.closest('.chg'),id=card.dataset.id,a=b.dataset.a,c=allChanges().find(x=>x.id===id),prev=S.decisions[id];
-  if(a==='accept'){S.decisions[id]='accepted';toast('Change accepted',()=>{if(prev)S.decisions[id]=prev;else delete S.decisions[id];renderChanges()})}
+  if(a==='accept'){if(check(c,afterOf(c)).blocked)return toast('This change isn\'t supported by your evidence');S.decisions[id]='accepted';toast('Change accepted',()=>{if(prev)S.decisions[id]=prev;else delete S.decisions[id];renderChanges()})}
   if(a==='reject'){S.decisions[id]='rejected';toast('Change rejected',()=>{if(prev)S.decisions[id]=prev;else delete S.decisions[id];renderChanges()})}
   if(a==='undo'){delete S.decisions[id]}
   if(a==='edit')S.editing[id]=true;
   if(a==='cancel')delete S.editing[id];
   if(a==='revert'){delete S.edits[id];delete S.editing[id]}
-  if(a==='save'){const v=$('#ed-'+id).value.trim();if(!v)return toast('Text can\'t be empty');if(v!==afterOf({...c,id:'__'}))S.edits[id]=v;else delete S.edits[id];delete S.editing[id];if(S.decisions[id]==='accepted'&&flags(v).length)delete S.decisions[id];toast(flags(v).length?'Still contains numbers not in your vault':authCheck(v).length?'Saved — authenticity flags remain':'Edit saved')}
+  if(a==='save'){const v=$('#ed-'+id).value.trim();if(!v)return toast('Text can\'t be empty');if(v!==afterOf({...c,id:'__'}))S.edits[id]=v;else delete S.edits[id];delete S.editing[id];const kv=check(c,v);if(S.decisions[id]==='accepted'&&kv.blocked)delete S.decisions[id];toast(kv.lock?'That would change a locked fact':kv.names.length?'Still names things not in your evidence':flags(v).length?'Still contains numbers not in your vault':authCheck(v).length?'Saved — authenticity flags remain':'Edit saved')}
   S.manualFinal=null;renderChanges();
   if(['save','cancel','edit','undo'].includes(a)){const el=$(`.chg[data-id="${id}"]`);el&&el.scrollIntoView({block:'nearest'})}
 });
-$('#acceptLow').onclick=()=>{const done=[];visibleChanges().forEach(c=>{const a=afterOf(c);if(!S.decisions[c.id]&&c.risk==='low'&&!flags(a).length&&!lockViolation(c,a)&&!authCheck(a).length){S.decisions[c.id]='accepted';done.push(c.id)}});S.manualFinal=null;renderChanges();toast(done.length?`${done.length} low-risk change${done.length>1?'s':''} accepted`:'No pending low-risk changes',done.length?()=>{done.forEach(i=>delete S.decisions[i]);renderChanges()}:null)};
+$('#acceptLow').onclick=()=>{const done=[];visibleChanges().forEach(c=>{const a=afterOf(c);if(!S.decisions[c.id]&&c.risk!=='med'&&check(c,a).risk==='low'&&!authCheck(a).length){S.decisions[c.id]='accepted';done.push(c.id)}});S.manualFinal=null;renderChanges();toast(done.length?`${done.length} low-risk change${done.length>1?'s':''} accepted`:'No pending low-risk changes',done.length?()=>{done.forEach(i=>delete S.decisions[i]);renderChanges()}:null)};
 
 /* =================== Final: build, templates =================== */
 function insertInSection(ls,heading,line){let hi=ls.findIndex(l=>l.trim().toUpperCase()===heading);
   if(hi===-1){let ei=ls.findIndex(l=>/^EDUCATION/i.test(l.trim())&&isHeading(l));if(ei===-1)ei=ls.length;ls.splice(ei,0,heading,line,'');return ls}
   let j=hi+1;while(j<ls.length&&ls[j].trim()&&!isHeading(ls[j]))j++;ls.splice(j,0,line);return ls}
 function buildFinal(){let text=S.inputs.resume;const added=[];
-  visibleChanges().filter(c=>S.decisions[c.id]==='accepted').forEach(c=>{const a=afterOf(c);
+  visibleChanges().filter(c=>S.decisions[c.id]==='accepted'&&!check(c,afterOf(c)).blocked).forEach(c=>{const a=afterOf(c);
     if(c.type==='replace'&&text.includes(c.before))text=text.replace(c.before,a);
     else if(c.type==='top'){const ls=text.split('\n');let at=ls.findIndex((l,i)=>i>0&&isHeading(l));if(at<0)at=Math.min(3,ls.length);ls.splice(at,0,c.heading,a,'');text=ls.join('\n')}
     else if(c.type!=='replace')text=insertInSection(text.split('\n'),c.heading||'ADDITIONAL EXPERIENCE',a).join('\n');
@@ -766,6 +792,7 @@ function runParse(silent){
   const text=out.map(x=>x.t).join('\n'),checks=[],roles=S.vault.filter(v=>v.type==='role'),name=(S.vault.find(v=>v.type==='name')||{}).text;
   checks.push(out[0]&&out[0].t===name?['pass','Name read first',name]:['fail','Name not read first','ATS may mislabel your profile.']);
   checks.push(EMAIL.test(text)||PHONE.test(text)?['pass','Contact details extracted','Email and phone are plain text, not in a header or image.']:['fail','Contact details missing','Add email and phone as plain text.']);
+  S.vault.filter(v=>v.type==='edu'&&v.locked).forEach(d=>{if(!text.includes(d.text))checks.push(['fail','Qualification lost or altered',d.text])});
   roles.forEach(r=>{const ok=text.includes(r.title)&&text.includes(r.employer)&&text.includes(r.dates);checks.push(ok?['pass',`${r.employer}: title, employer & dates intact`,`${r.title} · ${r.dates}`]:['fail',`${r.employer}: fact lost or altered`,'Check the title, employer and dates match your vault.'])});
   const srcB=ordered(S.finalText).secs.reduce((n,s)=>n+s.lines.filter(l=>/^\s*[•\-*]\s/.test(l)).length,0),gotB=out.filter(x=>x.t.startsWith('• ')).length;
   checks.push(srcB===gotB?['pass',`All ${gotB} bullets extracted`,'Nothing dropped or merged.']:['warn','Bullet count differs',`${gotB} extracted vs ${srcB} written.`]);
@@ -887,10 +914,10 @@ $('#editToggle').onclick=()=>{const ed=$('#finalEdit'),editing=!ed.classList.con
   else{ed.classList.remove('hide');$('#paper').classList.add('hide');$('#editToggle').innerHTML=ic('check')+' Done';ed.focus()}};
 const curText=()=>S.ftab==='letter'?letter():orderedText(!$('#finalEdit').classList.contains('hide')?$('#finalEdit').value:S.finalText);
 const fname=ext=>`${S.inputs.company}_${S.inputs.role}_${S.ftab==='letter'?'cover_letter':'resume'}`.replace(/\W+/g,'_')+'.'+ext;
-$('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(curText());toast('Copied to clipboard')}catch(_){toast('Copy blocked here — use a download instead')}};
+$('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(curText());S.exported=true;toast('Copied to clipboard')}catch(_){toast('Copy blocked here — use a download instead')}};
 let DL=null;try{window.claude&&window.claude.use&&window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(_){}
-async function save(ext,data){if(DL){try{await DL.save({filename:fname(ext),data});toast('Saved')}catch(e){if(e&&e.code!=='declined')toast('Download unavailable here — use Copy')}return}
-  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'}));a.download=fname(ext);document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Download started')}catch(_){toast('Download unavailable here — use Copy')}}
+async function save(ext,data){if(DL){try{await DL.save({filename:fname(ext),data});S.exported=true;toast('Saved')}catch(e){if(e&&e.code!=='declined')toast('Download unavailable here — use Copy')}return}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'}));a.download=fname(ext);document.body.appendChild(a);a.click();S.exported=true;setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Download started')}catch(_){toast('Download unavailable here — use Copy')}}
 function exportHtml(){const name=(S.vault.find(v=>v.type==='name')||{}).text||'Résumé',margin=S.opts.pages==='1'?'10mm':'16mm';return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)} — Résumé</title><style>body{margin:0;background:#eef0ea}${$('#paperCss').textContent}.paper{max-width:820px;margin:24px auto;box-shadow:none;min-height:0}@media print{body{background:#fff}.paper{margin:0;border:0;max-width:none;padding:0}@page{size:A4;margin:${margin}}}</style></head><body><div class="${paperClass()}" style="${esc(paperStyle())}">${renderPaper(S.finalText,true)}</div></body></html>`}
 $('#txtBtn').onclick=()=>save('txt',curText());
 $('#mdBtn').onclick=()=>save('md',curText().split('\n').map((l,i)=>i===0?'# '+l:isHeading(l)?'\n## '+l.charAt(0)+l.slice(1).toLowerCase():l.replace(/^•\s*/,'- ')).join('\n'));
@@ -909,17 +936,17 @@ $('#letterAI').onclick=async()=>{
   if(!aiReady())return toast('Live AI isn\'t available in this view');
   const I=S.inputs,ctl=new AbortController(),el=$('#letter'),prev=S.aiLetter;
   $('#letterAI').disabled=true;$('#letterStop').classList.remove('hide');$('#letterStop').onclick=()=>ctl.abort();$('#letterNote').textContent='Thinking…';el.textContent='';
-  const facts=S.vault.filter(v=>['ach','extra','answer','summary','edu'].includes(v.type)).map(v=>`${v.id}: ${v.text}`).join('\n');
+  const facts=S.vault.filter(v=>['ach','extra','answer','summary','edu'].includes(v.type)).map(v=>`${v.id}: ${shieldT(v.text)}`).join('\n');
   const sig=S.signals.filter(s=>!s.infer).map(s=>`- ${s.text} (source: ${s.src})`).join('\n')||'- none';
-  const name=(S.vault.find(v=>v.type==='name')||{}).text||'';
-  const prompt=`Write a concise cover letter (180–240 words) from ${name} for the "${I.role}" role at ${I.company}. Tone: ${S.opts.tone}.
+  const name=candidateName(),unshield=t=>name?String(t).split('[Candidate]').join(name):t;
+  const prompt=`Write a concise cover letter (180–240 words) from [Candidate] for the "${I.role}" role at ${I.company}. Tone: ${S.opts.tone}.
 Rules: use ONLY facts from the evidence below — never invent numbers, employers, titles or achievements; every number must appear in the evidence. Mention at most one company signal, and only if it genuinely connects to the evidence. No generic phrases (passionate, results-driven, team player), no AI-sounding words (leverage, foster, spearhead, delve), no superlatives. Plain text only, starting "Dear Hiring Team at ${I.company}," and ending with "Kind regards," and the name.
 
 TOP REQUIREMENTS: ${S.reqs.filter(r=>r.priority==='must').slice(0,6).map(r=>r.label).join('; ')}
 EVIDENCE:\n${facts}
 COMPANY SIGNALS:\n${sig}`;
-  try{const res=await SAMPLE(prompt,{signal:ctl.signal,onText:({text})=>{el.textContent=text;$('#letterNote').textContent='Writing…'}});
-    S.aiLetter=res.text.trim();el.textContent=S.aiLetter;const f=flags(S.aiLetter),au=authCheck(S.aiLetter);
+  try{const res=await SAMPLE(prompt,{signal:ctl.signal,onText:({text})=>{el.textContent=unshield(text);$('#letterNote').textContent='Writing…'}});
+    S.aiLetter=unshield(res.text.trim());el.textContent=S.aiLetter;const f=flags(S.aiLetter),au=authCheck(S.aiLetter);
     $('#letterNote').textContent=f.length?`Check: ${f.join(', ')} not found in your vault — edit before sending.`:au.length?`Written by ${res.provider} · ${au.length} authenticity flag${au.length>1?'s':''}: ${au.map(x=>x.p).join(', ')}`:`Written by ${res.provider} · every number checked against your vault`;
     $('#letterReset').classList.remove('hide');
   }catch(e){S.aiLetter=prev;el.textContent=e.text&&e.code==='cancelled'?e.text:letter();$('#letterNote').textContent=e.code==='cancelled'?'Stopped.':e.code==='not_granted'?'Claude access wasn\'t allowed.':e.code==='rate_limited'?'Usage limit reached — try later.':'Couldn\'t write the letter — try again.'}
@@ -937,6 +964,7 @@ $('#planBtn').onclick=$('#planBtnM').onclick=()=>{renderPlans();openSheet('#plan
 $('#scrim').onclick=closeSheets;$$('[data-close]').forEach(b=>b.onclick=closeSheets);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').classList.contains('hide'))closeSheets()});
 $('#providers').addEventListener('change',e=>{S.provider=e.target.value;renderAIStatus()});
+$('#region').addEventListener('change',markStale);
 $('#shield').onchange=e=>{S.shield=e.target.checked};
 const month=()=>new Date().toISOString().slice(0,7);
 function usage(){const u=store.get('truthfit-usage',{m:month(),n:0});return u.m===month()?u:{m:month(),n:0}}
@@ -952,6 +980,7 @@ function renderPlans(){const u=usage();$('#usageNote').innerHTML=`${ic('info')}<
   $('#plans').innerHTML=PLANS.map(p=>`<div class="plan ${p.rec?'best':''}"><h3>${p.name}</h3><div class="pr">${p.price} <small>${p.per}</small></div>${p.note?`<span class="tag t-ok" style="justify-self:start">${ic('check')}${p.note}</span>`:''}<ul>${p.items.map(i=>`<li>${ic('check')}<span>${esc(i)}</span></li>`).join('')}</ul><button class="btn ${p.id==='free'?'ghost':p.rec?'primary':'line'} sm" data-plan="${p.id}" ${p.id==='free'?'disabled':''}>${p.cta}</button></div>`).join('')}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(b&&!b.disabled)toast('Checkout isn\'t part of this prototype — this tests which plan people choose')});
 
-function reset(){F.forEach(k=>$('#'+k).value='');$$('.upmsg').forEach(m=>m.textContent='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:''});go(1)}
+function reset(){F.forEach(k=>$('#'+k).value='');$$('.upmsg').forEach(m=>m.textContent='');Object.assign(S,{maxStep:1,reqs:[],changes:[],vault:[],gaps:{},decisions:{},manualFinal:null,finalText:'',analysisSignature:'',stale:false,exported:false,running:false});go(1)}
+window.addEventListener('beforeunload',e=>{if(S.maxStep>1&&!S.exported){e.preventDefault();e.returnValue=''}});
 renderUsage();renderAIStatus();go(1);
 })();

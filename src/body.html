@@ -87,23 +87,23 @@
       <div class="card-h"><div><h2>Application details</h2><p>Required fields are marked •</p></div><button class="btn line sm" id="loadExample"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg> Load sample example</button></div>
       <div class="card-b">
         <div class="row2">
-          <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization"></div>
-          <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off"></div>
+          <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization" required aria-required="true"></div>
+          <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off" required aria-required="true"></div>
         </div>
         <div class="field drop" data-target="jd">
           <div class="lbl"><label for="jd">Job description •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="jd"></label></div>
-          <textarea id="jd" placeholder="Paste the full vacancy — responsibilities, qualifications and required skills."></textarea>
-          <div class="upmsg" data-msg="jd"></div>
+          <textarea id="jd" placeholder="Paste the full vacancy — responsibilities, qualifications and required skills." required aria-required="true"></textarea>
+          <div class="upmsg" data-msg="jd" aria-live="polite"></div>
         </div>
         <div class="field drop" data-target="resume">
           <div class="lbl"><label for="resume">Your résumé •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> PDF, Word or text<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="resume"></label></div>
-          <textarea id="resume" class="tall" placeholder="Paste or drop your complete résumé. Keep company names, titles, dates and numbers exactly as they are."></textarea>
-          <div class="upmsg" data-msg="resume"></div>
+          <textarea id="resume" class="tall" placeholder="Paste or drop your complete résumé. Keep company names, titles, dates and numbers exactly as they are." required aria-required="true"></textarea>
+          <div class="upmsg" data-msg="resume" aria-live="polite"></div>
         </div>
         <div class="field drop" data-target="extra">
           <div class="lbl"><label for="extra">Extra evidence <em>optional</em></label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="extra"></label></div>
           <textarea id="extra" placeholder="Projects, certificates, awards, side work — anything true that isn't on your résumé yet."></textarea>
-          <div class="upmsg" data-msg="extra"></div>
+          <div class="upmsg" data-msg="extra" aria-live="polite"></div>
         </div>
         <div class="field"><div class="lbl"><label for="links">Portfolio or LinkedIn URL <em>optional</em></label></div><input type="url" id="links" placeholder="https://"><p class="hint">Kept as a reference in your vault. Reading linked pages is part of the working tool.</p></div>
         <div class="row3">
@@ -123,7 +123,7 @@
         </ul>
       </div></div>
       <div class="card"><div class="card-b" style="display:flex;gap:12px;align-items:center"><span class="aibadge" id="aiBadge"><span class="dotm"><svg class="ic" aria-hidden="true"><use href="#i-sparkles"/></svg></span><span id="aiBadgeText">TruthFit AI</span></span><span class="hint" style="margin:0" id="aiBadgeHint">Checking availability…</span></div></div>
-      <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Contact details are removed from extracted text before analysis. Scanned PDF pages use secure Qwen Vision OCR before those details can be detected.</div></div>
+      <div class="notice blue"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><div><b>Privacy shield is on.</b> Your name, contact lines, links, emails and phone numbers are removed from the text before AI analysis. Scanned (image-only) PDFs are the exception: reading them means sending the page images to Qwen Vision OCR, so we ask you first.</div></div>
     </div>
   </div>
 </section>
@@ -295,7 +295,7 @@
       <label class="opt" data-provider="kimi"><input type="radio" name="prov" value="kimi"><div><b>Kimi K2.7 <span class="tag t-low">Live</span></b><span>Frontier-scale Moonshot model through Cloudflare Workers AI; availability depends on the Workers plan.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
     </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
-        <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Remove email &amp; phone before sending to the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
+        <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Hide your name, contact lines, links, email &amp; phone from the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>
 </div>
 <div class="sheet hide" id="planSheet" role="dialog" aria-modal="true" aria-labelledby="planTitle">
