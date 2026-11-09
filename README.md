@@ -20,6 +20,17 @@ To publish it as a website, turn on **GitHub Pages**: open the repository's **Se
 
 > **About the AI engine:** the Worker keeps provider keys server-side. Cloudflare Workers AI works through the `AI` binding with no browser key. Optional `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` secrets enable those providers; `AI_PROVIDER_ORDER` controls fallback order.
 
+Enable the optional providers without exposing keys to the browser:
+
+```sh
+npx wrangler secret put ANTHROPIC_API_KEY
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler secret put ANTHROPIC_MODEL   # optional; e.g. a model ID enabled for your account
+npx wrangler secret put OPENAI_MODEL      # optional; e.g. a model ID enabled for your account
+```
+
+Use real provider model IDs supported by your Anthropic/OpenAI account. The names `claude-opus-5` and `gpt-5.6` are configurable defaults in this prototype, not a guarantee that those IDs exist or are enabled for a given API account.
+
 ---
 
 ## The seven steps

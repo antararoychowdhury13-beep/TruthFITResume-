@@ -849,6 +849,7 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
       <label class="opt" data-provider="anthropic"><input type="radio" name="prov" value="anthropic"><div><b>Claude Opus 5 <span class="tag t-nice">API key</span></b><span>Anthropic's current Opus API model. Available when ANTHROPIC_API_KEY is configured on the Worker.</span></div></label>
       <label class="opt" data-provider="openai"><input type="radio" name="prov" value="openai"><div><b>OpenAI GPT <span class="tag t-nice">API key</span></b><span>Uses the OpenAI model configured in OPENAI_MODEL. Available when OPENAI_API_KEY is configured on the Worker.</span></div></label>
       <label class="opt" data-provider="qwen"><input type="radio" name="prov" value="qwen"><div><b>Qwen 3.8 27B <span class="tag t-low">Live</span></b><span>Strong reasoning and long-context analysis through Cloudflare Workers AI.</span></div></label>
+      <label class="opt" data-provider="workers"><input type="radio" name="prov" value="workers"><div><b>Llama 3.3 70B <span class="tag t-low">Live</span></b><span>Fast Cloudflare Workers AI fallback. You can also select it directly for an analysis.</span></div></label>
       <label class="opt" data-provider="kimi"><input type="radio" name="prov" value="kimi"><div><b>Kimi K2.7 <span class="tag t-low">Live</span></b><span>Frontier-scale Moonshot model through Cloudflare Workers AI; availability depends on the Workers plan.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
     </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
@@ -1123,7 +1124,7 @@ const SENIORITY=[['Intern / entry',/\b(intern|trainee|graduate|junior|associate)
 /* =================== State =================== */
 const S={step:1,maxStep:1,inputs:{},opts:{pages:'2',tone:'balanced'},provider:'auto',shield:true,aiUsed:false,aiModel:'',aiSug:{},aiLetter:null,
  vault:[],reqs:[],bench:[],signals:[],cls:{},pack:null,changes:[],mode:'balanced',decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},
- generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null,running:false,stale:false,analysisSignature:'',exported:false};
+ generic:false,before:null,finalText:'',manualFinal:null,filter:'all',rfilter:'all',ftab:'resume',pii:{email:0,phone:0},parse:null,running:false,stale:false,analysisSignature:'',exported:false,aiFallback:''};
 const STEPS=['Import','Evidence Vault','Role Intelligence','Evidence Map','Strategy','Review','Design & Test'];
 const STEP_ICONS=['doc','tray','scope','checklist','sliders','review','viewfinder'];
 
@@ -1304,21 +1305,23 @@ async function workerSample(prompt,opts={}){
   const res=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,provider:S.provider}),signal:opts.signal});
   const data=await res.json().catch(()=>({}));
   if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
-  MODEL_NAME=modelDisplay(data.provider,data.model);const note=$('#ovNote');if(note)note.textContent=`Model: ${MODEL_NAME} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider};
+  MODEL_NAME=modelDisplay(data.provider,data.model);const fallback=data.fallbackFrom?` · fallback after ${String(data.fallbackFrom).split(',').map(providerLabel).join(' → ')}`:'';const note=$('#ovNote');if(note)note.textContent=`Responded: ${MODEL_NAME}${fallback} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider,fallbackFrom:data.fallbackFrom||''};
 }
 fetch('/api/models',{headers:{accept:'application/json'}}).then(async r=>{if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});
 const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
 function modelDisplay(provider,model){const m=String(model||'');if(/qwen3\.8-27b/i.test(m))return 'Qwen 3.8 27B · Cloudflare Workers AI';if(/kimi-k2\.7/i.test(m))return 'Kimi K2.7 · Cloudflare Workers AI';if(/llama-3\.3-70b/i.test(m))return 'Llama 3.3 70B · Cloudflare Workers AI';if(/claude-opus-5/i.test(m))return 'Claude Opus 5 · Anthropic';if(/^gpt-5\.6/i.test(m))return 'GPT-5.6 · OpenAI';return [provider,m].filter(Boolean).join(' · ')||'TruthFit AI'}
+function providerLabel(p){return ({anthropic:'Claude Opus 5',openai:'GPT-5.6',qwen:'Qwen 3.8 27B',kimi:'Kimi K2.7',workers:'Llama 3.3 70B',workersAi:'Llama 3.3 70B'})[p]||p}
+function routeModels(){if(!AI_MODELS)return [];if(S.provider!=='auto')return [selectedModel()];return String(AI_MODELS.default||'').split(',').filter(p=>AI_MODELS.available[p==='workers'?'workersAi':p]).map(p=>modelDisplay('',AI_MODELS.models[p==='workersAi'?'workers':p]))}
 function selectedModel(){if(S.provider==='offline')return 'Offline engine';if(!AI_MODELS)return 'TruthFit AI';let p=S.provider;if(p==='auto'){const order=String(AI_MODELS.default||'').split(',');p=order.find(x=>AI_MODELS.available[x==='workers'?'workersAi':x])||'workers'}const key=p==='workersAi'?'workers':p;return modelDisplay('',AI_MODELS.models&&AI_MODELS.models[key])}
 function renderAIStatus(){
   const live=aiReady(),off=S.provider==='offline';
   const names=AI_MODELS?[AI_MODELS.available.anthropic&&'Anthropic',AI_MODELS.available.openai&&'OpenAI',AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
-  const msg=off?'Offline engine selected — no AI is used.':live?`Connected securely${names.length?` · ${names.join(', ')}`:''}. TruthFit guardrails re-check every answer.`:SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
+  const route=routeModels(),msg=off?'Offline engine selected — no AI is used.':live?(S.aiUsed?`Last response: ${S.aiModel}${S.aiFallback?` · fallback after ${String(S.aiFallback).split(',').map(providerLabel).join(' → ')}`:''}.`:`Ready${route.length?` · route: ${route.map(x=>x.split(' · ')[0]).join(' → ')}`:''}. TruthFit guardrails re-check every answer.`):SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
   const selected=S.aiUsed&&S.aiModel?S.aiModel:selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
   $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`${S.aiUsed?'Model used':'Active model'}: ${selected}. Text is privacy-filtered; scanned pages use secure Qwen Vision OCR.`:'AI unavailable · the offline engine will be used.';
   $('#letterAI').classList.toggle('hide',!live);
-  if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=!!AI_MODELS.available[row.dataset.provider];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
+  if(AI_MODELS){$$('[data-provider]').forEach(row=>{const key=row.dataset.provider==='workers'?'workersAi':row.dataset.provider,ok=!!AI_MODELS.available[key];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }
 const candidateName=()=>(S.vault.find(v=>v.type==='name')||{}).text||'';
 const shieldT=t=>S.shield?G.shield(t,{name:candidateName(),hiddenLines:S.vault.filter(v=>v.type==='name'||v.type==='contact').map(v=>v.text)}):t;
@@ -1378,7 +1381,7 @@ async function startAnalysis(){
   S.running=true;$('#nextBtn').disabled=true;S.analysisSignature=inputSignature();S.stale=false;S.exported=false;
   const I=S.inputs;
   S.generic=!(norm(I.resume)===norm(EX.resume)&&norm(I.jd)===norm(EX.jd));
-  Object.assign(S,{decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},manualFinal:null,maxStep:1,filter:'all',rfilter:'all',aiUsed:false,aiModel:'',aiSug:{},aiLetter:null});
+  Object.assign(S,{decisions:{},edits:{},editing:{},gaps:{},drafts:{},open:{},manualFinal:null,maxStep:1,filter:'all',rfilter:'all',aiUsed:false,aiModel:'',aiFallback:'',aiSug:{},aiLetter:null});
   S.pii={email:EMAIL.test(I.resume)?1:0,phone:PHONE.test(I.resume)?1:0};
   S.vault=buildVault(I.resume,I.extra,I.links);
   S.cls=classify(I.role,I.jd,I.company);S.pack=PACKS[S.cls.pack]||null;
@@ -1399,7 +1402,7 @@ async function startAnalysis(){
     [useAI?'Running TruthFit guardrails on the AI output':'Mapping requirements to evidence',()=>`${S.reqs.length} requirements · ${S.changes.filter(c=>check(c,afterOf(c)).blocked).length} changes blocked`]
   ];
   $('#stages').innerHTML=stagesDef.map((s,i)=>`<li class="stage" data-i="${i}"><span class="ico2">${ic('circle')}</span><span>${esc(s[0])}</span><small></small></li>`).join('');
-  $('#ovNote').textContent=useAI?`Model: ${activeModel} · Securely routed through the TruthFit Worker · Usually 30–90 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
+  $('#ovNote').textContent=useAI?`Routing now: ${routeModels().map(x=>x.split(' · ')[0]).join(' → ')||activeModel} · Securely through the TruthFit Worker · Usually 30–90 seconds`:SAMPLE_CHECKED&&S.provider!=='offline'?'Live AI is unavailable, so the offline engine is running.':'Offline engine — no AI is used.';
   const d=reduce?0:1,done=(i)=>{const li=$(`.stage[data-i="${i}"]`);li.classList.remove('active');li.classList.add('done');li.querySelector('.ico2').innerHTML=ic('check-fill');li.querySelector('small').textContent=stagesDef[i][1]();$('#ovBar').style.width=((i+1)/stagesDef.length*100)+'%'};
   const act=i=>$(`.stage[data-i="${i}"]`).classList.add('active');
   for(const i of [0,1]){act(i);if(i===1)$$('#cloudB .frag').forEach((f,j)=>setTimeout(()=>f.classList.add('in'),j*50*d));await sleep(reduce?80:500);done(i)}
@@ -1409,7 +1412,7 @@ async function startAnalysis(){
     $('#ovStop').onclick=()=>{stopReason='user';ctl.abort()};
     try{
       const res=await SAMPLE(aiPrompt(),{signal:ctl.signal,onText:({text})=>{$('#ovStream').textContent=text.slice(-260);$('#ovTitle').textContent=`TruthFit AI is writing… ${Math.round(text.length/100)/10}k characters`}});
-      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=MODEL_NAME;S.generic=false;renderAIStatus();
+      const j=parseJSON(res.text);applyAI(j);S.aiUsed=true;S.aiModel=MODEL_NAME;S.aiFallback=res.fallbackFrom||'';S.generic=false;renderAIStatus();
     }catch(e){
       offline();const c=e&&e.code;
       toast(stopReason==='user'?'Stopped — using the offline engine':stopReason==='timeout'?'The AI took too long — continuing with the offline engine':c==='not_granted'?'AI access wasn\'t allowed — using the offline engine':c==='rate_limited'?'The AI usage limit was reached — using the offline engine for now':'The AI answer couldn\'t be used — falling back to the offline engine');
