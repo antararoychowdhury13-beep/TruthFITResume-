@@ -295,7 +295,17 @@
       <label class="opt" data-provider="workers"><input type="radio" name="prov" value="workers"><div><b>Llama 3.3 70B <span class="tag t-low">Live</span></b><span>Fast Cloudflare Workers AI fallback. You can also select it directly for an analysis.</span></div></label>
       <label class="opt" data-provider="kimi"><input type="radio" name="prov" value="kimi"><div><b>Kimi K2.7 <span class="tag t-low">Live</span></b><span>Frontier-scale Moonshot model through Cloudflare Workers AI; availability depends on the Workers plan.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
-    </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
+    </div><div class="grouped-f" id="aiStatus" aria-live="polite">Checking the secure AI service…</div>
+    <div class="grouped-f" id="providerSetup">
+      <b style="display:block;margin-bottom:6px">Add an API provider</b>
+      <span class="hint" style="display:block;margin:0 0 10px">Cloudflare account administrators can add encrypted keys without exposing them to this app or GitHub.</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn line sm" data-secret-help="ANTHROPIC_API_KEY">Add Claude key</button>
+        <button type="button" class="btn line sm" data-secret-help="OPENAI_API_KEY">Add OpenAI key</button>
+        <button type="button" class="btn ghost sm" id="refreshModels">Refresh availability</button>
+      </div>
+      <span class="hint" id="secretHelp" aria-live="polite" style="display:block;margin:9px 0 0">Keys are entered only in Cloudflare → Settings → Variables and Secrets.</span>
+    </div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Hide your name, contact lines, links, email &amp; phone from the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>
 </div>

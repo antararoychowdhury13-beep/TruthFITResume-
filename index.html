@@ -852,7 +852,17 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
       <label class="opt" data-provider="workers"><input type="radio" name="prov" value="workers"><div><b>Llama 3.3 70B <span class="tag t-low">Live</span></b><span>Fast Cloudflare Workers AI fallback. You can also select it directly for an analysis.</span></div></label>
       <label class="opt" data-provider="kimi"><input type="radio" name="prov" value="kimi"><div><b>Kimi K2.7 <span class="tag t-low">Live</span></b><span>Frontier-scale Moonshot model through Cloudflare Workers AI; availability depends on the Workers plan.</span></div></label>
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
-    </div><div class="grouped-f" id="aiStatus">Checking the secure AI service…</div></div>
+    </div><div class="grouped-f" id="aiStatus" aria-live="polite">Checking the secure AI service…</div>
+    <div class="grouped-f" id="providerSetup">
+      <b style="display:block;margin-bottom:6px">Add an API provider</b>
+      <span class="hint" style="display:block;margin:0 0 10px">Cloudflare account administrators can add encrypted keys without exposing them to this app or GitHub.</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn line sm" data-secret-help="ANTHROPIC_API_KEY">Add Claude key</button>
+        <button type="button" class="btn line sm" data-secret-help="OPENAI_API_KEY">Add OpenAI key</button>
+        <button type="button" class="btn ghost sm" id="refreshModels">Refresh availability</button>
+      </div>
+      <span class="hint" id="secretHelp" aria-live="polite" style="display:block;margin:9px 0 0">Keys are entered only in Cloudflare → Settings → Variables and Secrets.</span>
+    </div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Hide your name, contact lines, links, email &amp; phone from the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>
 </div>
@@ -1307,7 +1317,8 @@ async function workerSample(prompt,opts={}){
   if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
   MODEL_NAME=modelDisplay(data.provider,data.model);const fallback=data.fallbackFrom?` · fallback after ${String(data.fallbackFrom).split(',').map(providerLabel).join(' → ')}`:'';const note=$('#ovNote');if(note)note.textContent=`Responded: ${MODEL_NAME}${fallback} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider,fallbackFrom:data.fallbackFrom||''};
 }
-fetch('/api/models',{headers:{accept:'application/json'}}).then(async r=>{if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});
+async function refreshModels(){try{const r=await fetch('/api/models',{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus();return true}catch(_){SAMPLE_CHECKED=true;renderAIStatus();return false}}
+refreshModels();
 const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
 function modelDisplay(provider,model){const m=String(model||'');if(/qwen3\.8-27b/i.test(m))return 'Qwen 3.8 27B · Cloudflare Workers AI';if(/kimi-k2\.7/i.test(m))return 'Kimi K2.7 · Cloudflare Workers AI';if(/llama-3\.3-70b/i.test(m))return 'Llama 3.3 70B · Cloudflare Workers AI';if(/claude-opus-5/i.test(m))return 'Claude Opus 5 · Anthropic';if(/^gpt-5\.6/i.test(m))return 'GPT-5.6 · OpenAI';return [provider,m].filter(Boolean).join(' · ')||'TruthFit AI'}
 function providerLabel(p){return ({anthropic:'Claude Opus 5',openai:'GPT-5.6',qwen:'Qwen 3.8 27B',kimi:'Kimi K2.7',workers:'Llama 3.3 70B',workersAi:'Llama 3.3 70B'})[p]||p}
@@ -1968,6 +1979,9 @@ $('#planBtn').onclick=$('#planBtnM').onclick=()=>{renderPlans();openSheet('#plan
 $('#scrim').onclick=closeSheets;$$('[data-close]').forEach(b=>b.onclick=closeSheets);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').classList.contains('hide'))closeSheets()});
 $('#providers').addEventListener('change',e=>{S.provider=e.target.value;renderAIStatus()});
+const CF_SECRET_URL='https://dash.cloudflare.com/393933f9767228390511ffdfe4d55e43/workers/services/view/truthfitresume/production/settings';
+$('#providerSetup').addEventListener('click',async e=>{const b=e.target.closest('[data-secret-help]');if(!b)return;const name=b.dataset.secretHelp;$('#secretHelp').innerHTML=`In Cloudflare, open <b>Variables and Secrets</b>, choose <b>Add</b> → <b>Secret</b>, use variable name <b>${name}</b>, paste the provider key, then deploy. Return here and click “Refresh availability”.`;window.open(CF_SECRET_URL,'_blank','noopener,noreferrer')});
+$('#refreshModels').onclick=async()=>{const b=$('#refreshModels');b.disabled=true;$('#secretHelp').textContent='Checking the live Worker…';const ok=await refreshModels();b.disabled=false;const enabled=AI_MODELS?[AI_MODELS.available.anthropic&&'Claude',AI_MODELS.available.openai&&'OpenAI'].filter(Boolean):[];$('#secretHelp').textContent=ok?(enabled.length?`${enabled.join(' and ')} ${enabled.length>1?'are':'is'} now active.`:'No Claude or OpenAI key is active yet. Save the secret in Cloudflare, then try again.'):'Could not reach the Worker. Try again in a moment.'};
 $('#region').addEventListener('change',markStale);
 $('#shield').onchange=e=>{S.shield=e.target.checked};
 const month=()=>new Date().toISOString().slice(0,7);

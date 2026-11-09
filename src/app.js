@@ -305,7 +305,8 @@ async function workerSample(prompt,opts={}){
   if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
   MODEL_NAME=modelDisplay(data.provider,data.model);const fallback=data.fallbackFrom?` · fallback after ${String(data.fallbackFrom).split(',').map(providerLabel).join(' → ')}`:'';const note=$('#ovNote');if(note)note.textContent=`Responded: ${MODEL_NAME}${fallback} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider,fallbackFrom:data.fallbackFrom||''};
 }
-fetch('/api/models',{headers:{accept:'application/json'}}).then(async r=>{if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus()}).catch(()=>{SAMPLE_CHECKED=true;renderAIStatus()});
+async function refreshModels(){try{const r=await fetch('/api/models',{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus();return true}catch(_){SAMPLE_CHECKED=true;renderAIStatus();return false}}
+refreshModels();
 const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
 function modelDisplay(provider,model){const m=String(model||'');if(/qwen3\.8-27b/i.test(m))return 'Qwen 3.8 27B · Cloudflare Workers AI';if(/kimi-k2\.7/i.test(m))return 'Kimi K2.7 · Cloudflare Workers AI';if(/llama-3\.3-70b/i.test(m))return 'Llama 3.3 70B · Cloudflare Workers AI';if(/claude-opus-5/i.test(m))return 'Claude Opus 5 · Anthropic';if(/^gpt-5\.6/i.test(m))return 'GPT-5.6 · OpenAI';return [provider,m].filter(Boolean).join(' · ')||'TruthFit AI'}
 function providerLabel(p){return ({anthropic:'Claude Opus 5',openai:'GPT-5.6',qwen:'Qwen 3.8 27B',kimi:'Kimi K2.7',workers:'Llama 3.3 70B',workersAi:'Llama 3.3 70B'})[p]||p}
@@ -966,6 +967,9 @@ $('#planBtn').onclick=$('#planBtnM').onclick=()=>{renderPlans();openSheet('#plan
 $('#scrim').onclick=closeSheets;$$('[data-close]').forEach(b=>b.onclick=closeSheets);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').classList.contains('hide'))closeSheets()});
 $('#providers').addEventListener('change',e=>{S.provider=e.target.value;renderAIStatus()});
+const CF_SECRET_URL='https://dash.cloudflare.com/393933f9767228390511ffdfe4d55e43/workers/services/view/truthfitresume/production/settings';
+$('#providerSetup').addEventListener('click',async e=>{const b=e.target.closest('[data-secret-help]');if(!b)return;const name=b.dataset.secretHelp;$('#secretHelp').innerHTML=`In Cloudflare, open <b>Variables and Secrets</b>, choose <b>Add</b> → <b>Secret</b>, use variable name <b>${name}</b>, paste the provider key, then deploy. Return here and click “Refresh availability”.`;window.open(CF_SECRET_URL,'_blank','noopener,noreferrer')});
+$('#refreshModels').onclick=async()=>{const b=$('#refreshModels');b.disabled=true;$('#secretHelp').textContent='Checking the live Worker…';const ok=await refreshModels();b.disabled=false;const enabled=AI_MODELS?[AI_MODELS.available.anthropic&&'Claude',AI_MODELS.available.openai&&'OpenAI'].filter(Boolean):[];$('#secretHelp').textContent=ok?(enabled.length?`${enabled.join(' and ')} ${enabled.length>1?'are':'is'} now active.`:'No Claude or OpenAI key is active yet. Save the secret in Cloudflare, then try again.'):'Could not reach the Worker. Try again in a moment.'};
 $('#region').addEventListener('change',markStale);
 $('#shield').onchange=e=>{S.shield=e.target.checked};
 const month=()=>new Date().toISOString().slice(0,7);
