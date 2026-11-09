@@ -175,7 +175,8 @@ function inputSignature(){return F.map(k=>$('#'+k).value.trim()).concat($('#regi
 function markStale(){if(!S.analysisSignature||inputSignature()===S.analysisSignature)return;S.stale=true;S.maxStep=1;S.decisions={};S.manualFinal=null;renderStepper();renderBar()}
 F.forEach(k=>$('#'+k).addEventListener('input',()=>{markStale();if(S.step===1)renderBar()}));
 $('#loadExample').onclick=()=>{F.forEach(k=>$('#'+k).value=EX[k]||'');renderBar();toast('Sample example loaded — replace it with your own application details')};
-$$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v;markStale()}));
+function renderLengthHint(){const h=$('#lengthHint');if(h)h.textContent=S.opts.pages==='1'?'Short, precise ATS résumé constrained to one A4 page. Every role stays represented; the strongest evidence is prioritised at 9–12 pt.':'Detailed curriculum vitae with broader evidence, capped at two A4 pages in ATS-safe 9–12 pt type.'}
+$$('.seg[data-opt]').forEach(g=>g.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));S.opts[g.dataset.opt]=b.dataset.v;renderLengthHint();markStale()}));
 function setMsg(k,t,err){const m=$(`[data-msg="${k}"]`);m.textContent=t;m.classList.toggle('err',!!err)}
 function fileCard(k,file,state,detail,err){const host=$(`[data-file-card="${k}"]`);if(!host)return;if(!file){host.innerHTML='';return}const ext=(file.name.split('.').pop()||'file').toUpperCase(),size=file.size<1024?`${file.size} B`:file.size<1048576?`${(file.size/1024).toFixed(1)} KB`:`${(file.size/1048576).toFixed(1)} MB`;host.innerHTML=`<div class="filecard"><span class="fic">${ic('doc')}</span><span class="finfo"><b>${esc(file.name)}</b><span>${esc(ext)} · ${size} · ${esc(state)}${detail?' · '+esc(detail):''}</span></span><button type="button" class="fremove" data-remove-file="${k}" aria-label="Remove ${esc(file.name)}">${ic('xmark')}</button></div>`;host.querySelector('.filecard').style.borderColor=err?'var(--red)':''}
 const LIBS={},CDN='https://cdnjs.cloudflare.com/ajax/libs/';
@@ -335,7 +336,7 @@ function parseJSON(t){try{return JSON.parse(t)}catch(_){}const m=t.match(/```(?:
 function aiPrompt(){
   const I=S.inputs;
   const vault=S.vault.filter(v=>!['contact','link','name'].includes(v.type)).map(v=>`${v.id} [${v.type}${v.parent?' at '+v.parent:''}${v.src!=='Résumé'?' · '+v.src:''}]: ${shieldT(v.type==='role'?`${v.title} — ${v.employer} | ${v.dates}`:v.text)}`).join('\n');
-  return `You are the analysis engine of TruthFit, a truth-first résumé tailoring tool. A candidate is applying for "${I.role}" at "${I.company}" (region: ${I.region}; tone: ${S.opts.tone}; target length: ${S.opts.pages} page(s)).
+  return `You are the analysis engine of TruthFit, a truth-first résumé tailoring tool. A candidate is applying for "${I.role}" at "${I.company}" (region: ${I.region}; tone: ${S.opts.tone}; output: ${S.opts.pages==='1'?'a concise one-page A4 résumé':'a detailed curriculum vitae capped at two A4 pages'}; ATS-safe 9–12 pt type).
 
 ABSOLUTE RULES
 1. Never invent experience, employers, titles, dates, credentials or numbers. Every number you write in an "after" text must already appear in the résumé or vault below.
@@ -733,6 +734,13 @@ function buildFinal(){let text=S.inputs.resume;const added=[];
     else if(c.type!=='replace')text=insertInSection(text.split('\n'),c.heading||'ADDITIONAL EXPERIENCE',a).join('\n');
     a.split('\n').forEach(l=>l.trim()&&added.push(l.trim()))});
   S.added=new Set(added);return text}
+function bulletValue(line){const n=norm(line);let score=/\d/.test(line)?3:0;S.reqs.forEach(r=>{if(r.priority==='must'&&r.kw.some(k=>k&&n.includes(k)))score+=statusOf(r)==='proven'?5:2});if(S.added&&S.added.has(line.trim()))score+=4;return score}
+function lengthVersion(text,target){const parsed=parseSections(text),one=target==='1',sections=[];
+  parsed.secs.forEach(sec=>{const title=sec.title,lines=sec.lines.slice();if(/experience|employment|work history|career/i.test(title)){const groups=[];let cur={head:[],bullets:[]};lines.forEach((l,i)=>{if(G.parseRole(l,lines[i+1])){if(cur.head.length||cur.bullets.length)groups.push(cur);cur={head:[l],bullets:[]}}else if(/^\s*[•\-*]\s/.test(l))cur.bullets.push(l);else if(l.trim())cur.head.push(l)});if(cur.head.length||cur.bullets.length)groups.push(cur);const kept=[];groups.forEach((g,i)=>{kept.push(...g.head);const limit=one?(i===0?2:1):(i<2?5:3);const chosen=g.bullets.map((l,j)=>({l,j,s:bulletValue(l)})).sort((a,b)=>b.s-a.s||a.j-b.j).slice(0,limit).sort((a,b)=>a.j-b.j);kept.push(...chosen.map(x=>x.l))});sections.push({title,lines:kept});return}
+    let limit=one?2:6;if(/education|qualification|certif|licen|language/i.test(title))limit=one?4:10;if(/skill|tool|competenc|expertise/i.test(title))limit=one?2:4;if(/summary|profile|objective/i.test(title))limit=one?2:4;const useful=lines.filter(l=>l.trim());sections.push({title,lines:useful.slice(0,limit)})});
+  let out=[parsed.header.join('\n').trim(),...sections.filter(s=>s.lines.length).map(s=>s.title+'\n'+s.lines.join('\n'))].filter(Boolean).join('\n\n'),budget=one?700:1400;
+  if(words(out)>budget){const ls=out.split('\n'),candidates=ls.map((l,i)=>({l,i,s:bulletValue(l)})).filter(x=>/^\s*[•\-*]\s/.test(x.l)).sort((a,b)=>a.s-b.s||b.i-a.i);for(const c of candidates){if(words(out)<=budget)break;ls[c.i]='';out=ls.join('\n')}}
+  return out.replace(/\n{3,}/g,'\n\n').trim()}
 const FONTS={arial:'Arial, Helvetica, sans-serif',sans:'"Helvetica Neue", Helvetica, Arial, sans-serif',calibri:'Calibri, Carlito, "Segoe UI", Arial, sans-serif',georgia:'Georgia, "Times New Roman", serif',garamond:'Garamond, "EB Garamond", Georgia, serif'};
 const ACCENTS=['#111111','#1f3a5f','#0f6b4f','#7a2e3a','#0e6e7a','#5b3c8c'];
 const CLASSES={portal:['Portal Safe','Single column, plain structure — for job portals and ATS uploads'],modern:['Recruiter Modern','More expressive, still parse-tested — for recruiter emails'],human:['Human / Portfolio','Visually richer — for networking, print and portfolios, not portals']};
@@ -814,7 +822,7 @@ function runParse(silent){
   const hid=Object.keys(S.tpl.hidden).filter(k=>S.tpl.hidden[k]);
   if(hid.some(h=>/experience|education/i.test(h)))checks.push(['fail','Required section hidden',hid.join(', ')+' is hidden in your template.']);
   checks.push(['pass','No icons, images or text boxes','Everything is real text an ATS can read.']);
-  const target=+S.opts.pages,pg=S.pages||1;checks.push(pg<=target+0.05?['pass',`Fits ${target} page${target>1?'s':''}`,`About ${pg} page${pg>1?'s':''} in the final A4 layout.`]:['warn',`Runs to ~${pg} pages`,`Target is ${target}. Remove or shorten lower-priority evidence; TruthFit will not delete it automatically.`]);
+  const target=+S.opts.pages,pg=S.pages||1,px=parseFloat(getComputedStyle(p).fontSize),pt=Math.round(px*.75*10)/10;checks.push(pt>=9&&pt<=12?['pass','ATS-safe font size',`${pt} pt — within the required 9–12 pt range.`]:['fail','Font size outside 9–12 pt',`${pt} pt detected.`]);checks.push(pg<=target+0.05?['pass',target===1?'One A4 page':'Maximum two A4 pages',`About ${pg} page${pg>1?'s':''} in the final A4 layout.`]:['fail',`Exceeds ${target}-page limit`,`Runs to about ${pg} pages. Shorten lower-priority evidence before export.`]);
   const fails=checks.filter(c=>c[0]==='fail').length,warns=checks.filter(c=>c[0]==='warn').length;
   S.parse={checks,out,orderIssue,fails,warns,miss:miss.length,contact:EMAIL.test(text)||PHONE.test(text),roleLoss:checks.filter(c=>c[0]==='fail'&&/fact lost/.test(c[1])).length};
   $('#parseChecks').innerHTML=checks.map((c,i)=>`<li class="${c[0]}" style="animation-delay:${reduce?0:i*70}ms"><span class="c">${ic(c[0]==='pass'?'check-fill':c[0]==='warn'?'warn-fill':'xmark-fill')}</span><div><b>${esc(c[1])}</b><small>${esc(c[2])}</small></div></li>`).join('');
@@ -909,9 +917,9 @@ function letter(){if(S.aiLetter)return S.aiLetter;const I=S.inputs,name=(S.vault
   const sig=S.signals.find(s=>s.type==='company'&&s.use);
   return `Dear Hiring Team at ${I.company},\n\nI'm applying for the ${I.role} role. ${sig?`Your emphasis on ${/collaboration/i.test(sig.text)?'collaboration and innovation with impact':'design at scale'} matches how I work. `:''}The vacancy asks for ${ev.map(r=>r.label.split(' — ')[0].toLowerCase()).join(', ')} — areas where I can point to specific results:\n\n${ev.map(r=>{const x=recOf(r);return '• '+(x?x.text:'').replace(/^[•\-*]\s*/,'')}).join('\n')}\n\nI'd welcome the chance to discuss how this experience could support ${I.company}'s design team.\n\nKind regards,\n${name}\n\n—\nEvery claim above is cited from your evidence vault.`}
 function renderFinal(){
-  S.finalText=S.manualFinal!=null?S.manualFinal:buildFinal();
+  const complete=S.manualFinal!=null?S.manualFinal:buildFinal();S.completeFinalText=complete;S.finalText=S.manualFinal!=null?complete:lengthVersion(complete,S.opts.pages);
   if(S.opts.pages==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal';if(S.tplKey!=='compact')S.tplKey='custom'}
-  $('#finalTitle').textContent='Design & Test';
+  $('#finalTitle').textContent=S.opts.pages==='1'?'Design & Test · One-page résumé':'Design & Test · Detailed CV';
   $('#finalEdit').value=S.finalText;$('#letter').textContent=letter();
   renderTplUI();renderPaperOnly(false);runParse(false);renderScores();renderVersions();
 }
@@ -928,7 +936,7 @@ $('#copyBtn').onclick=async()=>{try{await navigator.clipboard.writeText(curText(
 let DL=null;try{window.claude&&window.claude.use&&window.claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(_){}
 async function save(ext,data){if(DL){try{await DL.save({filename:fname(ext),data});S.exported=true;toast('Saved')}catch(e){if(e&&e.code!=='declined')toast('Download unavailable here — use Copy')}return}
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/plain'}));a.download=fname(ext);document.body.appendChild(a);a.click();S.exported=true;setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Download started')}catch(_){toast('Download unavailable here — use Copy')}}
-function exportHtml(){const name=(S.vault.find(v=>v.type==='name')||{}).text||'Résumé',margin=S.opts.pages==='1'?'10mm':'16mm';return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)} — Résumé</title><style>body{margin:0;background:#eef0ea}${$('#paperCss').textContent}.paper{max-width:820px;margin:24px auto;box-shadow:none;min-height:0}@media print{body{background:#fff}.paper{margin:0;border:0;max-width:none;padding:0}@page{size:A4;margin:${margin}}}</style></head><body><div class="${paperClass()}" style="${esc(paperStyle())}">${renderPaper(S.finalText,true)}</div></body></html>`}
+function exportHtml(){const name=(S.vault.find(v=>v.type==='name')||{}).text||'Résumé',margin=S.opts.pages==='1'?'10mm':'16mm';return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(name)} — ${S.opts.pages==='1'?'Résumé':'Curriculum Vitae'}</title><style>body{margin:0;background:#eef0ea}${$('#paperCss').textContent}.paper{max-width:820px;margin:24px auto;box-shadow:none;min-height:0}@media print{body{background:#fff}.paper{margin:0;border:0;max-width:none;padding:0!important;min-height:0!important}@page{size:A4;margin:${margin}}}</style></head><body><div class="${paperClass()}" style="${esc(paperStyle())}">${renderPaper(S.finalText,true)}</div></body></html>`}
 $('#txtBtn').onclick=()=>save('txt',curText());
 $('#mdBtn').onclick=()=>save('md',curText().split('\n').map((l,i)=>i===0?'# '+l:isHeading(l)?'\n## '+l.charAt(0)+l.slice(1).toLowerCase():l.replace(/^•\s*/,'- ')).join('\n'));
 $('#htmlBtn').onclick=()=>{if(S.ftab==='letter')return toast('Styled export is for the résumé');save('html',exportHtml())};

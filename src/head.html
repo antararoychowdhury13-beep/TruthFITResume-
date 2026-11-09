@@ -535,7 +535,7 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
 @media (prefers-contrast:more){:root{--sep:rgba(60,60,67,.5);--label2:rgba(60,60,67,.85)}}
 </style>
 <style id="paperCss">
-.paper{--accent:#111;--pfont:Arial,Helvetica,sans-serif;--fs:13px;--sp:1;position:relative;background:#fff;padding:44px 50px;min-height:760px;font-family:var(--pfont);color:#111;font-size:var(--fs);line-height:1.45;border-radius:6px;overflow:hidden;box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 12px 34px rgba(0,0,0,.10);letter-spacing:0}
+.paper{--accent:#111;--pfont:Arial,Helvetica,sans-serif;--fs:10pt;--sp:1;position:relative;background:#fff;padding:44px 50px;min-height:760px;font-family:var(--pfont);color:#111;font-size:clamp(9pt,var(--fs),12pt);line-height:1.45;border-radius:6px;overflow:hidden;box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 12px 34px rgba(0,0,0,.10);letter-spacing:0}
 .paper .nm{font-size:calc(var(--fs)*1.85);font-weight:800;letter-spacing:-.01em;margin:0}
 .paper .sub{font-size:calc(var(--fs)*1.04);color:#333;margin:2px 0}
 .paper .ct{font-size:calc(var(--fs)*.92);color:#555;margin:0 0 6px}
@@ -549,9 +549,9 @@ mark.auth{background:color-mix(in srgb,var(--orange) 16%,transparent);color:inhe
 .paper.h-accent h5{border:0;padding:0;color:var(--accent)}
 .paper.h-bar h5{border:0;border-left:3px solid var(--accent);padding:1px 0 1px 8px}
 .paper.h-center h5{text-align:center;letter-spacing:.2em;border-bottom:1px solid var(--accent)}
-.paper.d-compact{--fs:12px;--sp:.6;padding:34px 40px}
-.paper.t-1{--fs:11px;--sp:.48;line-height:1.32;padding:28px 34px}.paper.t-1 h5{margin-top:9px;margin-bottom:4px}.paper.t-1 .hdr{margin-bottom:9px}.paper.t-1 p{margin-top:2px;margin-bottom:2px}.paper.t-1 li{margin-bottom:1px}
-.paper.d-airy{--fs:13.5px;--sp:1.35}
+.paper.d-compact{--fs:9pt;--sp:.6;padding:34px 40px}
+.paper.t-1{--fs:9pt;--sp:.48;line-height:1.28;padding:26px 32px;min-height:calc((100% - 0px)*1.4142)}.paper.t-1 h5{margin-top:8px;margin-bottom:3px}.paper.t-1 .hdr{margin-bottom:8px}.paper.t-1 p{margin-top:1px;margin-bottom:1px}.paper.t-1 li{margin-bottom:0}
+.paper.d-airy{--fs:11pt;--sp:1.35}
 .paper.two .cols{display:grid;grid-template-columns:31% 1fr;gap:26px}
 .paper.two aside{border-right:1px solid #e5e5e5;padding-right:18px}
 .paper.two aside h5:first-child,.paper.two .main h5:first-child{margin-top:4px}

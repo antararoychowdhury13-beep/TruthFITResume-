@@ -76,3 +76,19 @@ test("sample happy path: every step renders, low-risk changes apply, facts survi
   assert.deepEqual(fails, []);
   assert.deepEqual(calls.pageErrors || [], []);
 });
+
+test("one-page contract: creates a concise A4 résumé at an ATS-safe font while retaining every role", async () => {
+  const { page } = await openApp();
+  await setProvider(page, "offline");
+  await page.click("#loadExample");
+  await page.click('.seg[data-opt="pages"] button[data-v="1"]');
+  await analyse(page);
+  await goTo(page, 7);
+  assert.match(await page.textContent("#finalTitle"), /One-page résumé/);
+  const final = await page.inputValue("#finalEdit");
+  for (const employer of ["IBM", "BT Group", "Siemens"]) assert.match(final, new RegExp(employer));
+  const checks = await page.$$eval("#parseChecks li", xs => xs.map(x => x.textContent));
+  assert.ok(checks.some(x => /ATS-safe font size/.test(x)), checks.join("\n"));
+  assert.ok(checks.some(x => /One A4 page/.test(x)), checks.join("\n"));
+  assert.ok(final.split("\n").filter(x => /^•/.test(x)).length < 15, "one-page résumé should prioritise rather than copy every bullet");
+});
