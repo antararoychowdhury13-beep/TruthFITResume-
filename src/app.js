@@ -299,8 +299,10 @@ $('#confirmAll').onclick=()=>{const prev=S.vault.map(v=>v.confirmed);S.vault.for
 /* =================== Analysis =================== */
 /* =================== Secure Worker AI =================== */
 let MODEL_NAME='TruthFit AI',SAMPLE=null,SAMPLE_CHECKED=false,AI_MODELS=null;
+const BYOK={anthropic:'',openai:''};
 async function workerSample(prompt,opts={}){
-  const res=await fetch('/api/ai',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({prompt,provider:S.provider}),signal:opts.signal});
+  const headers={'content-type':'application/json'};if(BYOK.anthropic)headers['x-truthfit-anthropic-key']=BYOK.anthropic;if(BYOK.openai)headers['x-truthfit-openai-key']=BYOK.openai;
+  const res=await fetch('/api/ai',{method:'POST',headers,body:JSON.stringify({prompt,provider:S.provider}),signal:opts.signal});
   const data=await res.json().catch(()=>({}));
   if(!res.ok){const e=new Error(data.error||`AI service returned ${res.status}`);e.code=res.status===429?'rate_limited':'service_error';throw e}
   MODEL_NAME=modelDisplay(data.provider,data.model);const fallback=data.fallbackFrom?` · fallback after ${String(data.fallbackFrom).split(',').map(providerLabel).join(' → ')}`:'';const note=$('#ovNote');if(note)note.textContent=`Responded: ${MODEL_NAME}${fallback} · Securely routed through the TruthFit Worker`;if(opts.onText)opts.onText({text:data.text});return {text:data.text,modelApplied:data.model,provider:data.provider,fallbackFrom:data.fallbackFrom||''};
@@ -308,19 +310,20 @@ async function workerSample(prompt,opts={}){
 async function refreshModels(){try{const r=await fetch('/api/models',{headers:{accept:'application/json'},cache:'no-store'});if(!r.ok)throw new Error('unavailable');AI_MODELS=await r.json();SAMPLE=workerSample;SAMPLE_CHECKED=true;renderAIStatus();return true}catch(_){SAMPLE_CHECKED=true;renderAIStatus();return false}}
 refreshModels();
 const aiReady=()=>S.provider!=='offline'&&!!SAMPLE;
+function providerAvailable(p){const key=p==='workers'?'workersAi':p;return !!(AI_MODELS&&AI_MODELS.available[key])||!!BYOK[p]}
 function modelDisplay(provider,model){const m=String(model||'');if(/qwen3\.8-27b/i.test(m))return 'Qwen 3.8 27B · Cloudflare Workers AI';if(/kimi-k2\.7/i.test(m))return 'Kimi K2.7 · Cloudflare Workers AI';if(/llama-3\.3-70b/i.test(m))return 'Llama 3.3 70B · Cloudflare Workers AI';if(/claude-opus-5/i.test(m))return 'Claude Opus 5 · Anthropic';if(/^gpt-5\.6/i.test(m))return 'GPT-5.6 · OpenAI';return [provider,m].filter(Boolean).join(' · ')||'TruthFit AI'}
 function providerLabel(p){return ({anthropic:'Claude Opus 5',openai:'GPT-5.6',qwen:'Qwen 3.8 27B',kimi:'Kimi K2.7',workers:'Llama 3.3 70B',workersAi:'Llama 3.3 70B'})[p]||p}
-function routeModels(){if(!AI_MODELS)return [];if(S.provider!=='auto')return [selectedModel()];return String(AI_MODELS.default||'').split(',').filter(p=>AI_MODELS.available[p==='workers'?'workersAi':p]).map(p=>modelDisplay('',AI_MODELS.models[p==='workersAi'?'workers':p]))}
-function selectedModel(){if(S.provider==='offline')return 'Offline engine';if(!AI_MODELS)return 'TruthFit AI';let p=S.provider;if(p==='auto'){const order=String(AI_MODELS.default||'').split(',');p=order.find(x=>AI_MODELS.available[x==='workers'?'workersAi':x])||'workers'}const key=p==='workersAi'?'workers':p;return modelDisplay('',AI_MODELS.models&&AI_MODELS.models[key])}
+function routeModels(){if(!AI_MODELS)return [];if(S.provider!=='auto')return [selectedModel()];return String(AI_MODELS.default||'').split(',').filter(providerAvailable).map(p=>modelDisplay('',AI_MODELS.models[p==='workersAi'?'workers':p]))}
+function selectedModel(){if(S.provider==='offline')return 'Offline engine';if(!AI_MODELS)return 'TruthFit AI';let p=S.provider;if(p==='auto'){const order=String(AI_MODELS.default||'').split(',');p=order.find(providerAvailable)||'workers'}const key=p==='workersAi'?'workers':p;return modelDisplay('',AI_MODELS.models&&AI_MODELS.models[key])}
 function renderAIStatus(){
   const live=aiReady(),off=S.provider==='offline';
-  const names=AI_MODELS?[AI_MODELS.available.anthropic&&'Anthropic',AI_MODELS.available.openai&&'OpenAI',AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
+  const names=AI_MODELS?[providerAvailable('anthropic')&&`Anthropic${BYOK.anthropic?' (your key)':''}`,providerAvailable('openai')&&`OpenAI${BYOK.openai?' (your key)':''}`,AI_MODELS.available.workersAi&&'Workers AI'].filter(Boolean):[];
   const route=routeModels(),msg=off?'Offline engine selected — no AI is used.':live?(S.aiUsed?`Last response: ${S.aiModel}${S.aiFallback?` · fallback after ${String(S.aiFallback).split(',').map(providerLabel).join(' → ')}`:''}.`:`Ready${route.length?` · route: ${route.map(x=>x.split(' · ')[0]).join(' → ')}`:''}. TruthFit guardrails re-check every answer.`):SAMPLE_CHECKED?'The AI service is unavailable, so the offline engine will be used.':'Checking the secure AI service…';
   $('#aiStatus').textContent=msg;$('#aiBadgeHint').textContent=msg;
   const selected=S.aiUsed&&S.aiModel?S.aiModel:selectedModel();if(live&&!S.aiUsed)MODEL_NAME=selected;$('#aiBadge').classList.toggle('off',!live);$('#aiBadgeText').textContent=off?'Offline engine':selected;
   $('#providerLabel').textContent=off?'Offline':live?selected.split(' · ')[0]:'Unavailable';$('#sbFoot').textContent=off?'Offline analysis · no résumé data is sent to an AI model.':live?`${S.aiUsed?'Model used':'Active model'}: ${selected}. Text is privacy-filtered; scanned pages use secure Qwen Vision OCR.`:'AI unavailable · the offline engine will be used.';
   $('#letterAI').classList.toggle('hide',!live);
-  if(AI_MODELS){$$('[data-provider]').forEach(row=>{const key=row.dataset.provider==='workers'?'workersAi':row.dataset.provider,ok=!!AI_MODELS.available[key];row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
+  if(AI_MODELS){$$('[data-provider]').forEach(row=>{const ok=providerAvailable(row.dataset.provider);row.classList.toggle('disabled',!ok);row.querySelector('input').disabled=!ok})}
 }
 const candidateName=()=>(S.vault.find(v=>v.type==='name')||{}).text||'';
 const shieldT=t=>S.shield?G.shield(t,{name:candidateName(),hiddenLines:S.vault.filter(v=>v.type==='name'||v.type==='contact').map(v=>v.text)}):t;
@@ -967,9 +970,8 @@ $('#planBtn').onclick=$('#planBtnM').onclick=()=>{renderPlans();openSheet('#plan
 $('#scrim').onclick=closeSheets;$$('[data-close]').forEach(b=>b.onclick=closeSheets);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#scrim').classList.contains('hide'))closeSheets()});
 $('#providers').addEventListener('change',e=>{S.provider=e.target.value;renderAIStatus()});
-const CF_SECRET_URL='https://dash.cloudflare.com/393933f9767228390511ffdfe4d55e43/workers/services/view/truthfitresume/production/settings';
-$('#providerSetup').addEventListener('click',async e=>{const b=e.target.closest('[data-secret-help]');if(!b)return;const name=b.dataset.secretHelp;$('#secretHelp').innerHTML=`In Cloudflare, open <b>Variables and Secrets</b>, choose <b>Add</b> → <b>Secret</b>, use variable name <b>${name}</b>, paste the provider key, then deploy. Return here and click “Refresh availability”.`;window.open(CF_SECRET_URL,'_blank','noopener,noreferrer')});
-$('#refreshModels').onclick=async()=>{const b=$('#refreshModels');b.disabled=true;$('#secretHelp').textContent='Checking the live Worker…';const ok=await refreshModels();b.disabled=false;const enabled=AI_MODELS?[AI_MODELS.available.anthropic&&'Claude',AI_MODELS.available.openai&&'OpenAI'].filter(Boolean):[];$('#secretHelp').textContent=ok?(enabled.length?`${enabled.join(' and ')} ${enabled.length>1?'are':'is'} now active.`:'No Claude or OpenAI key is active yet. Save the secret in Cloudflare, then try again.'):'Could not reach the Worker. Try again in a moment.'};
+$('#providerSetup').addEventListener('click',e=>{const b=e.target.closest('[data-connect-key]');if(!b)return;const p=b.dataset.connectKey,input=$('#'+p+'Key'),v=input.value.trim();if(v.length<20)return toast('Enter a complete API key');BYOK[p]=v;input.value='';S.provider=p;const radio=$(`#providers input[value="${p}"]`);radio.checked=true;renderAIStatus();$('#secretHelp').textContent=`${p==='anthropic'?'Claude':'OpenAI'} connected for this tab. Provider usage is billed to your account.`;toast(`${p==='anthropic'?'Claude':'OpenAI'} connected for this tab`)});
+$('#disconnectKeys').onclick=()=>{BYOK.anthropic=BYOK.openai='';S.provider='auto';$('#providers input[value="auto"]').checked=true;renderAIStatus();$('#secretHelp').textContent='Personal API keys removed from this tab.';toast('Connected API keys removed')};
 $('#region').addEventListener('change',markStale);
 $('#shield').onchange=e=>{S.shield=e.target.checked};
 const month=()=>new Date().toISOString().slice(0,7);

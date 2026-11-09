@@ -82,3 +82,21 @@ test("BUG-023: malformed JSON is a 400 with a generic message", async () => {
   assert.equal(res.status, 400);
   assert.doesNotMatch((await res.json()).error, /position|property name/);
 });
+
+test("BYOK: a user's OpenAI key is used for one request and is never returned", async () => {
+  const realFetch = globalThis.fetch;
+  let auth = "";
+  globalThis.fetch = async (_url, init) => {
+    auth = init.headers.authorization;
+    return new Response(JSON.stringify({ output_text: '{"ok":"byok"}' }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  try {
+    const key = "sk-user-owned-test-key-123456789";
+    const res = await worker.fetch(post("/api/ai", { prompt: PROMPT, provider: "openai" }, { "x-truthfit-openai-key": key }), env({ AI: undefined, AI_PROVIDER_ORDER: "openai" }));
+    const body = await res.json();
+    assert.equal(res.status, 200);
+    assert.equal(auth, `Bearer ${key}`);
+    assert.equal(body.text, '{"ok":"byok"}');
+    assert.doesNotMatch(JSON.stringify(body), /sk-user-owned/);
+  } finally { globalThis.fetch = realFetch; }
+});

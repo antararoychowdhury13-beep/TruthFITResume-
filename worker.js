@@ -21,11 +21,11 @@ function available(env) {
   };
 }
 
-async function runAnthropic(prompt, env) {
+async function runAnthropic(prompt, env, userKey) {
   const model = env.ANTHROPIC_MODEL || "claude-opus-5";
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    headers: { "content-type": "application/json", "x-api-key": userKey || env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model, max_tokens: 8000, temperature: 0.2, messages: [{ role: "user", content: prompt }] }),
   });
   if (!response.ok) throw new Error(`Anthropic returned ${response.status}`);
@@ -33,11 +33,11 @@ async function runAnthropic(prompt, env) {
   return { text: (data.content || []).filter(x => x.type === "text").map(x => x.text).join("\n"), model, provider: "Anthropic" };
 }
 
-async function runOpenAI(prompt, env) {
+async function runOpenAI(prompt, env, userKey) {
   const model = env.OPENAI_MODEL || "gpt-5.6";
   const response = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    headers: { "content-type": "application/json", authorization: `Bearer ${userKey || env.OPENAI_API_KEY}` },
     body: JSON.stringify({ model, input: prompt, max_output_tokens: 8000 }),
   });
   if (!response.ok) throw new Error(`OpenAI returned ${response.status}`);
@@ -91,15 +91,15 @@ async function runVisionOcr(image, kind, page, env) {
   return { text: text === "[NO TEXT]" ? "" : text, model, provider: "Qwen Vision via Workers AI" };
 }
 
-async function runAI(prompt, requested, env) {
+async function runAI(prompt, requested, env, userKeys = {}) {
   const order = requested && requested !== "auto" ? [requested] : String(env.AI_PROVIDER_ORDER || "anthropic,openai,qwen,kimi,workers").split(",").map(x => x.trim());
   const errors = [];
   const tried = [];
   for (const provider of order) {
     try {
       let result = null;
-      if (provider === "anthropic" && env.ANTHROPIC_API_KEY) result = await runAnthropic(prompt, env);
-      else if (provider === "openai" && env.OPENAI_API_KEY) result = await runOpenAI(prompt, env);
+      if (provider === "anthropic" && (userKeys.anthropic || env.ANTHROPIC_API_KEY)) result = await runAnthropic(prompt, env, userKeys.anthropic);
+      else if (provider === "openai" && (userKeys.openai || env.OPENAI_API_KEY)) result = await runOpenAI(prompt, env, userKeys.openai);
       else if (provider === "kimi" && env.AI && env.ENABLE_KIMI === "true") result = await runWorkersAI(prompt, env, "kimi");
       else if (["workers","workersAi","qwen"].includes(provider) && env.AI) result = await runWorkersAI(prompt, env, provider === "workersAi" ? "workers" : provider);
       if (result) return tried.length ? { ...result, fallbackFrom: tried.join(", ") } : result;
@@ -154,7 +154,9 @@ export default {
         if (!ALLOWED_PROMPT.test(body.prompt)) return json({ error: "Only TruthFit analysis and cover-letter prompts are accepted" }, 400);
         if (body.prompt.length > 65000) return json({ error: "Prompt is too large" }, 413);
         const provider = PROVIDERS.has(body.provider) ? body.provider : "auto";
-        return json(await runAI(body.prompt, provider, env));
+        const userKeys={anthropic:request.headers.get("x-truthfit-anthropic-key")||"",openai:request.headers.get("x-truthfit-openai-key")||""};
+        if(userKeys.anthropic.length>300||userKeys.openai.length>300)return json({error:"API key is too long"},400);
+        return json(await runAI(body.prompt, provider, env, userKeys));
       } catch (error) { console.error("AI request failed", error.message); return json({ error: "The AI service couldn't answer. Try again in a minute." }, 502); }
     }
     if (url.pathname === "/api/ocr" && request.method === "POST") {

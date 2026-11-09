@@ -297,14 +297,12 @@
       <label class="opt"><input type="radio" name="prov" value="offline"><div><b>Offline engine</b><span>No AI. Nothing leaves your browser. Matching and checks only.</span></div></label>
     </div><div class="grouped-f" id="aiStatus" aria-live="polite">Checking the secure AI service…</div>
     <div class="grouped-f" id="providerSetup">
-      <b style="display:block;margin-bottom:6px">Add an API provider</b>
-      <span class="hint" style="display:block;margin:0 0 10px">Cloudflare account administrators can add encrypted keys without exposing them to this app or GitHub.</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button type="button" class="btn line sm" data-secret-help="ANTHROPIC_API_KEY">Add Claude key</button>
-        <button type="button" class="btn line sm" data-secret-help="OPENAI_API_KEY">Add OpenAI key</button>
-        <button type="button" class="btn ghost sm" id="refreshModels">Refresh availability</button>
-      </div>
-      <span class="hint" id="secretHelp" aria-live="polite" style="display:block;margin:9px 0 0">Keys are entered only in Cloudflare → Settings → Variables and Secrets.</span>
+      <b style="display:block;margin-bottom:6px">Use your own API key (BYOK)</b>
+      <span class="hint" style="display:block;margin:0 0 10px">Provider charges go to your Anthropic or OpenAI account. Keys stay in this tab only, are sent over HTTPS only for your analysis, and are never saved by TruthFit.</span>
+      <div class="field" style="margin-bottom:10px"><label for="anthropicKey">Claude API key</label><div style="display:flex;gap:7px"><input id="anthropicKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"><button type="button" class="btn line sm" data-connect-key="anthropic">Connect</button></div></div>
+      <div class="field" style="margin-bottom:10px"><label for="openaiKey">OpenAI API key</label><div style="display:flex;gap:7px"><input id="openaiKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…"><button type="button" class="btn line sm" data-connect-key="openai">Connect</button></div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn ghost sm" id="disconnectKeys">Remove connected keys</button></div>
+      <span class="hint" id="secretHelp" aria-live="polite" style="display:block;margin:9px 0 0">No personal provider key is connected.</span>
     </div></div>
         <div><div class="grouped-h">Privacy</div><div class="grouped"><div class="pad switchrow"><label for="shield"><b style="display:block;font-weight:500">Privacy shield</b><span class="hint" style="margin:0">Hide your name, contact lines, links, email &amp; phone from the AI</span></label><input type="checkbox" class="tg" id="shield" checked></div></div></div>
   </div>

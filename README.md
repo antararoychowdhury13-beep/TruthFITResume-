@@ -18,9 +18,9 @@ For the deployed app:
 
 To publish it as a website, turn on **GitHub Pages**: open the repository's **Settings → Pages**, set **Source** to *Deploy from a branch*, pick **main** and **/ (root)**, then **Save**. The site appears at `https://<owner>.github.io/<repo>/` within a minute or two.
 
-> **About the AI engine:** the Worker keeps provider keys server-side. Cloudflare Workers AI works through the `AI` binding with no browser key. Optional `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` secrets enable those providers; `AI_PROVIDER_ORDER` controls fallback order.
+> **About the AI engine:** Cloudflare Workers AI works through the `AI` binding with no browser key. Claude and OpenAI support BYOK: each user may connect their own provider key for the current browser tab, and provider usage is billed to that user's provider account. The key is held in memory only, forwarded over HTTPS for the selected analysis, and is not persisted by TruthFit. Optional Worker-owned `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` secrets are still supported; `AI_PROVIDER_ORDER` controls fallback order.
 
-Enable the optional providers without exposing keys to the browser:
+An administrator can alternatively enable shared provider keys without exposing them to the browser:
 
 ```sh
 npx wrangler secret put ANTHROPIC_API_KEY
