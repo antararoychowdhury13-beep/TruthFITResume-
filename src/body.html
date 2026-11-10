@@ -96,17 +96,17 @@
       <div class="card-b">
         <div class="bulkbox hide" id="bulkMode"><div class="bulkbody">
           <h3>Batch application workspace</h3>
-          <p class="hint">Uses the source résumé below. Each vacancy becomes a separate application and follows the full seven-step lifecycle. A failed link does not stop the batch.</p>
-          <label class="lbl" for="bulkUrls">Job vacancy links <em>one per line, maximum 20</em></label>
-          <textarea id="bulkUrls" placeholder="https://company.example/jobs/role-one&#10;https://company.example/jobs/role-two"></textarea>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><button type="button" class="btn line sm" id="runBulk">Prepare applications</button><button type="button" class="btn ghost sm hide" id="stopBulk">Stop</button><span class="hint" id="bulkStatus" aria-live="polite" style="margin:0"></span></div>
+          <p class="hint">Add each vacancy separately so links and descriptions never mix. Every vacancy becomes its own application and follows the full seven-step lifecycle.</p>
+          <div id="bulkVacancies" class="vacancy-list"></div>
+          <div class="batch-actions"><button type="button" class="btn line sm" id="addBulkVacancy">＋ Add another vacancy</button><span class="hint" id="bulkCount">1 of 20 vacancies</span></div>
+          <div class="batch-actions"><button type="button" class="btn primary sm" id="runBulk">Prepare applications</button><button type="button" class="btn ghost sm hide" id="stopBulk">Stop</button><span class="hint" id="bulkStatus" aria-live="polite"></span></div>
           <div id="bulkResults" class="bulk-results"></div>
         </div></div>
-        <div class="row2">
+        <div class="row2 single-only">
           <div class="field"><div class="lbl"><label for="company">Target company •</label></div><input type="text" id="company" placeholder="e.g. Keka HR" autocomplete="organization" required aria-required="true"></div>
           <div class="field"><div class="lbl"><label for="role">Target role •</label></div><input type="text" id="role" placeholder="e.g. Design Manager" autocomplete="off" required aria-required="true"></div>
         </div>
-        <div class="field drop" data-target="jd">
+        <div class="field drop single-only" data-target="jd">
           <div class="lbl"><label for="jd">Job description •</label><label class="upl"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Upload<input type="file" accept=".txt,.md,.html,.htm,.pdf,.docx" data-for="jd"></label></div>
           <div class="urlrow"><input type="url" id="jdUrl" placeholder="Paste a public job vacancy link"><button type="button" class="btn line sm" id="extractJdUrl">Extract description</button></div>
           <textarea id="jd" placeholder="Paste the full vacancy — responsibilities, qualifications and required skills." required aria-required="true"></textarea>
