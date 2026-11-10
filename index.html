@@ -1060,6 +1060,16 @@ const EMAIL=/[\w.+-]+@[\w-]+\.[\w.]+/, PHONE=/\+?\d[\d\s-]{8,}\d/;
 const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const wb=(text,k)=>k.endsWith('*')?new RegExp('\\b'+reEsc(k.slice(0,-1))).test(text):new RegExp('\\b'+reEsc(k)+'\\b').test(text);
 const G=TruthGuards,isHeading=G.isHeading;
+function normalizeDocumentText(text){
+  const raw=String(text||'').replace(/\r/g,'').split('\n').map(l=>l.replace(/\s+/g,' ').trim().replace(/^[▪◦●○□■]\s*/, '• ')),out=[];let section='',seen=false;
+  const roleAt=(i,l)=>{try{return !!G.parseRole(l,raw[i+1]||'')}catch(_){return false}};
+  for(let i=0;i<raw.length;i++){const l=raw[i];if(!l){if(out.length&&out[out.length-1]!=='')out.push('');continue}if(isHeading(l)){section=l.toLowerCase();seen=true;out.push(l);continue}
+    const prev=out[out.length-1]||'',prevIdx=Math.max(0,i-1),bullet=/^•\s/.test(l),prevBullet=/^•\s/.test(prev),role=roleAt(i,l),prevRole=roleAt(prevIdx,prev),companyBeforeRole=roleAt(i+1,raw[i+1]||''),education=/education|qualification|certif|award|recognition|language/i.test(section);
+    const soft=seen&&!bullet&&!role&&!prevRole&&!companyBeforeRole&&!isHeading(prev)&&prev!==''&&!education&&(prevBullet||!/([.!?])$/.test(prev)||/\b(and|or|with|through|across|for|to|by|from|including|plus|approximately)$/i.test(prev));
+    if(soft)out[out.length-1]=prev+' '+l;else out.push(l)
+  }
+  return out.join('\n').replace(/\n{3,}/g,'\n\n').trim()
+}
 const YEAR=new Date().getFullYear(), TODAY=new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric'}).format(new Date());
 const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(_){return false}}};
 let toastT=null,toastUndo=null;
@@ -1226,7 +1236,7 @@ function renderCreationMode(){
 }
 $$('[data-creation]').forEach(b=>b.onclick=()=>{S.creationMode=b.dataset.creation;if(S.creationMode==='simple')S.workflow='single';renderCreationMode()});
 $$('[data-workflow]').forEach(b=>b.onclick=()=>{S.workflow=b.dataset.workflow;renderCreationMode()});
-function readInputs(){F.forEach(k=>S.inputs[k]=$('#'+k).value.trim());S.inputs.region=$('#region').value}
+function readInputs(){F.forEach(k=>S.inputs[k]=$('#'+k).value.trim());S.inputs.resume=normalizeDocumentText(S.inputs.resume);S.inputs.extra=normalizeDocumentText(S.inputs.extra);S.inputs.region=$('#region').value}
 function valid(){readInputs();return !!(S.inputs.company&&S.inputs.role&&S.inputs.jd.length>40&&S.inputs.resume.length>80)}
 function inputSignature(){return F.map(k=>$('#'+k).value.trim()).concat($('#region').value,S.opts.pages,S.opts.tone).join('\u241f')}
 function markStale(){if(!S.analysisSignature||inputSignature()===S.analysisSignature)return;S.stale=true;S.maxStep=1;S.decisions={};S.manualFinal=null;renderStepper();renderBar()}
@@ -1296,7 +1306,7 @@ function readFile(file,k){
   extract(file,ext,k).then(result=>{const mode=result&&typeof result==='object'?result.mode:'';let t=result&&typeof result==='object'?result.text:result;t=(t||'').replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
     if(FILE_READS[k]!==token)return;
     if(!t)throw new Error(ext==='pdf'?'No readable text was found after local extraction and AI OCR.':'No readable text found.');
-    $('#'+k).value=t;const long=t.length>15000||(result&&result.pages>4),detail=`${words(t)} words${result&&result.pages?` · ${result.pages} pages`:''}`;fileCard(k,file,long?'Attached · review length':'Ready',detail,long);setMsg(k,`${long?'⚠':'✓'} ${file.name} — ${detail} · ${mode||'read in your browser'}. ${long?'Long document: only the most relevant text is sent for analysis. Review the extraction carefully.':'Check the text before continuing.'}`,long);markStale();renderBar()}).catch(e=>{if(FILE_READS[k]===token){fileCard(k,file,'Could not read',e.message||'',true);setMsg(k,e.message||'Could not read that file.',true)}});
+    if(k==='resume'||k==='extra')t=normalizeDocumentText(t);$('#'+k).value=t;const long=t.length>15000||(result&&result.pages>4),detail=`${words(t)} words${result&&result.pages?` · ${result.pages} pages`:''}`;fileCard(k,file,long?'Attached · review length':'Ready',detail,long);setMsg(k,`${long?'⚠':'✓'} ${file.name} — ${detail} · ${mode||'read in your browser'}. ${long?'Long document: only the most relevant text is sent for analysis. Review the extraction carefully.':'Soft line wraps were joined into normal sentences; review the extraction before continuing.'}`,long);markStale();renderBar()}).catch(e=>{if(FILE_READS[k]===token){fileCard(k,file,'Could not read',e.message||'',true);setMsg(k,e.message||'Could not read that file.',true)}});
 }
 $$('input[type=file]').forEach(i=>i.addEventListener('change',e=>{readFile(e.target.files[0],i.dataset.for);e.target.value=''}));
 $$('.drop').forEach(d=>{const k=d.dataset.target;['dragenter','dragover'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.add('drag')}));['dragleave','drop'].forEach(t=>d.addEventListener(t,e=>{e.preventDefault();d.classList.remove('drag')}));d.addEventListener('drop',e=>readFile(e.dataTransfer.files[0],k))});
@@ -1325,6 +1335,7 @@ $('#bulkResults').addEventListener('click',e=>{const b=e.target.closest('[data-b
 
 /* =================== Vault =================== */
 function buildVault(resume,extra,links){
+  resume=normalizeDocumentText(resume);extra=normalizeDocumentText(extra);
   const V=[],cnt={R:0,E:0,T:0,D:0,S:0,X:0,O:0,C:0},id=k=>k+(++cnt[k]);
   let sec='header',role=null,first=true;
   const lines=resume.split('\n').map(x=>x.trim()).filter(Boolean);
@@ -1469,6 +1480,7 @@ function applyAI(j){
 async function startAnalysis(){
   if(S.running)return;
   if(!valid()){toast('Fill in the required fields first');const f=F.slice(0,4).find(k=>!S.inputs[k]);if(f)$('#'+f).focus();return}
+  $('#resume').value=S.inputs.resume;if(S.inputs.extra)$('#extra').value=S.inputs.extra;
   S.running=true;$('#nextBtn').disabled=true;S.analysisSignature=inputSignature();S.stale=false;S.exported=false;
   const I=S.inputs;
   S.generic=!(norm(I.resume)===norm(EX.resume)&&norm(I.jd)===norm(EX.jd));
@@ -1806,13 +1818,13 @@ $('#acceptLow').onclick=()=>{const done=[];visibleChanges().forEach(c=>{const a=
 function insertInSection(ls,heading,line){let hi=ls.findIndex(l=>l.trim().toUpperCase()===heading);
   if(hi===-1){let ei=ls.findIndex(l=>/^EDUCATION/i.test(l.trim())&&isHeading(l));if(ei===-1)ei=ls.length;ls.splice(ei,0,heading,line,'');return ls}
   let j=hi+1;while(j<ls.length&&ls[j].trim()&&!isHeading(ls[j]))j++;ls.splice(j,0,line);return ls}
-function buildFinal(){let text=S.inputs.resume;const added=[];
+function buildFinal(){let text=normalizeDocumentText(S.inputs.resume);const added=[];
   visibleChanges().filter(c=>S.decisions[c.id]==='accepted'&&!check(c,afterOf(c)).blocked).forEach(c=>{const a=afterOf(c);
     if(c.type==='replace'&&text.includes(c.before))text=text.replace(c.before,a);
     else if(c.type==='top'){const ls=text.split('\n');let at=ls.findIndex((l,i)=>i>0&&isHeading(l));if(at<0)at=Math.min(3,ls.length);ls.splice(at,0,c.heading,a,'');text=ls.join('\n')}
     else if(c.type!=='replace')text=insertInSection(text.split('\n'),c.heading||'ADDITIONAL EXPERIENCE',a).join('\n');
     a.split('\n').forEach(l=>l.trim()&&added.push(l.trim()))});
-  S.added=new Set(added);return text}
+  S.added=new Set(added);return normalizeDocumentText(text)}
 function bulletValue(line){const n=norm(line);let score=/\d/.test(line)?3:0;S.reqs.forEach(r=>{if(r.priority==='must'&&r.kw.some(k=>k&&n.includes(k)))score+=statusOf(r)==='proven'?5:2});if(S.added&&S.added.has(line.trim()))score+=4;return score}
 function lengthVersion(text,target){if(target==='detail')return text;const parsed=parseSections(text),one=target==='1',sections=[];
   parsed.secs.forEach(sec=>{const title=sec.title,lines=sec.lines.slice();if(/experience|employment|work history|career/i.test(title)){const groups=[];let cur={head:[],bullets:[]};lines.forEach((l,i)=>{if(G.parseRole(l,lines[i+1])){if(cur.head.length||cur.bullets.length)groups.push(cur);cur={head:[l],bullets:[]}}else if(/^\s*[•\-*]\s/.test(l))cur.bullets.push(l);else if(l.trim())cur.head.push(l)});if(cur.head.length||cur.bullets.length)groups.push(cur);const kept=[];groups.forEach((g,i)=>{kept.push(...g.head);const limit=one?(i===0?2:1):(i<2?5:3);const chosen=g.bullets.map((l,j)=>({l,j,s:bulletValue(l)})).sort((a,b)=>b.s-a.s||a.j-b.j).slice(0,limit).sort((a,b)=>a.j-b.j);kept.push(...chosen.map(x=>x.l))});sections.push({title,lines:kept});return}
@@ -1837,7 +1849,7 @@ function parseSections(text){const header=[],secs=[];let cur=null;text.split('\n
 function ordered(text){const {header,secs}=parseSections(text),titles=secs.map(s=>s.title),ord=S.tpl.order.filter(t=>titles.includes(t));
   titles.forEach((t,i)=>{if(!ord.includes(t)){const prev=titles.slice(0,i).reverse().find(x=>ord.includes(x));ord.splice(prev?ord.indexOf(prev)+1:0,0,t)}});
   S.tpl.order=ord;const all=ord.map(t=>secs.find(s=>s.title===t));return {header,all,secs:all.filter(s=>!S.tpl.hidden[s.title])}}
-function orderedText(text){const o=ordered(text);return [o.header.join('\n').trim(),...o.secs.map(s=>s.title+'\n'+s.lines.join('\n').trim())].join('\n\n')}
+function orderedText(text){const o=ordered(normalizeDocumentText(text));return normalizeDocumentText([o.header.join('\n').trim(),...o.secs.map(s=>s.title+'\n'+s.lines.join('\n').trim())].join('\n\n'))}
 function linesHTML(ls,clean){let html='',inList=false;const close=()=>{if(inList){html+='</ul>';inList=false}};
   for(const raw of ls){const l=raw.trim(),nw=!clean&&S.added&&S.added.has(l)?' new':'';if(!l){close();continue}
     if(/^[•\-*]\s/.test(l)){if(!inList){html+='<ul>';inList=true}html+=`<li class="${nw.trim()}">${esc(l.replace(/^[•\-*]\s*/,''))}</li>`;continue}
@@ -1996,7 +2008,7 @@ function letter(){if(S.aiLetter)return S.aiLetter;const I=S.inputs,name=(S.vault
   const sig=S.signals.find(s=>s.type==='company'&&s.use);
   return `Dear Hiring Team at ${I.company},\n\nI'm applying for the ${I.role} role. ${sig?`Your emphasis on ${/collaboration/i.test(sig.text)?'collaboration and innovation with impact':'design at scale'} matches how I work. `:''}The vacancy asks for ${ev.map(r=>r.label.split(' — ')[0].toLowerCase()).join(', ')} — areas where I can point to specific results:\n\n${ev.map(r=>{const x=recOf(r);return '• '+(x?x.text:'').replace(/^[•\-*]\s*/,'')}).join('\n')}\n\nI'd welcome the chance to discuss how this experience could support ${I.company}'s design team.\n\nKind regards,\n${name}\n\n—\nEvery claim above is cited from your evidence vault.`}
 function renderFinal(){
-  const complete=S.manualFinal!=null?S.manualFinal:buildFinal();S.completeFinalText=complete;S.finalVersions={1:lengthVersion(complete,'1'),detail:lengthVersion(complete,'detail')};S.activeFormat=S.opts.pages==='both'?(S.activeFormat||'1'):S.opts.pages;S.finalText=S.manualFinal!=null?complete:S.finalVersions[S.activeFormat];
+  const complete=normalizeDocumentText(S.manualFinal!=null?S.manualFinal:buildFinal());S.completeFinalText=complete;S.finalVersions={1:lengthVersion(complete,'1'),detail:lengthVersion(complete,'detail')};S.activeFormat=S.opts.pages==='both'?(S.activeFormat||'1'):S.opts.pages;S.finalText=S.manualFinal!=null?complete:S.finalVersions[S.activeFormat];
   if(S.activeFormat==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal';if(S.tplKey!=='compact')S.tplKey='custom'}
   $('#formatSwitch').classList.toggle('hide',S.opts.pages!=='both');$$('#formatSwitch [data-format]').forEach(b=>b.setAttribute('aria-selected',b.dataset.format===S.activeFormat));
   $('#finalTitle').textContent=S.activeFormat==='1'?'Design & Test · One-page résumé':'Design & Test · Detailed CV';
