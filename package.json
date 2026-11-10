@@ -13,5 +13,8 @@
   "devDependencies": {
     "playwright-core": "^1.48.2",
     "wrangler": "^4.45.0"
+  },
+  "dependencies": {
+    "@clerk/backend": "^3.27.0"
   }
 }

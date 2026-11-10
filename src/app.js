@@ -34,6 +34,16 @@ let toastT=null,toastUndo=null;
 function toast(m,undo){const t=$('#toast');$('#toastMsg').textContent=m;toastUndo=undo||null;$('#toastAct').classList.toggle('hide',!undo);t.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>{t.classList.remove('show');toastUndo=null},undo?4500:2300)}
 $('#toastAct').onclick=()=>{if(toastUndo){toastUndo();toastUndo=null}$('#toast').classList.remove('show')};
 
+/* =================== Clerk account & cloud persistence =================== */
+const AUTH={enabled:false,ready:false,clerk:null,user:null};
+async function loadExternalScript(src,attrs={}){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.async=true;s.crossOrigin='anonymous';Object.entries(attrs).forEach(([k,v])=>s.setAttribute(k,v));s.onload=ok;s.onerror=()=>no(new Error('Could not load the sign-in service'));document.head.appendChild(s)})}
+function renderAccount(){const signed=!!AUTH.user;$('#accountLabel').textContent=signed?(AUTH.user.fullName||AUTH.user.primaryEmailAddress?.emailAddress||'My account'):'Sign in';$('#accountState').textContent=!AUTH.ready?'Checking…':!AUTH.enabled?'Setup required':signed?'Cloud sync on':'Save across devices'}
+async function initAuth(){let cfg;try{const r=await fetch('/api/auth/config',{cache:'no-store'});cfg=await r.json();AUTH.enabled=!!cfg.enabled;if(!AUTH.enabled)return} catch(_){return}finally{if(!AUTH.enabled){AUTH.ready=true;renderAccount()}}
+  try{const domain=atob(cfg.publishableKey.split('_')[2]).slice(0,-1);await loadExternalScript(`https://${domain}/npm/@clerk/ui@1/dist/ui.browser.js`);await loadExternalScript(`https://${domain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`,{'data-clerk-publishable-key':cfg.publishableKey});await window.Clerk.load({ui:{ClerkUI:window.__internal_ClerkUICtor}});AUTH.clerk=window.Clerk;AUTH.user=window.Clerk.user||null;window.Clerk.addListener(({user})=>{AUTH.user=user||null;renderAccount()})}catch(e){console.error('Clerk initialization failed',e)}finally{AUTH.ready=true;renderAccount()}}
+async function authFetch(url,options={}){if(!AUTH.clerk||!AUTH.clerk.session)throw new Error('Sign in to save across devices');const token=await AUTH.clerk.session.getToken();return fetch(url,{...options,headers:{...(options.headers||{}),authorization:`Bearer ${token}`}})}
+function openAccount(){if(!AUTH.ready)return toast('Checking account service…');if(!AUTH.enabled)return toast('Clerk keys still need to be connected');if(AUTH.user)AUTH.clerk.openUserProfile();else AUTH.clerk.openSignIn()}
+$('#accountBtn').onclick=$('#accountBtnM').onclick=openAccount;renderAccount();initAuth();
+
 /* =================== Example data =================== */
 const EX={company:'Keka HR',role:'Design Manager',links:'https://portfolio.example.com',
 jd:`Design Manager — Keka HR
@@ -1000,12 +1010,13 @@ $('#mdBtn').onclick=()=>save('md',curText().split('\n').map((l,i)=>i===0?'# '+l:
 $('#htmlBtn').onclick=()=>{if(S.ftab==='letter')return toast('Styled export is for the résumé');save('html',exportHtml())};
 function getVers(){return store.get('truthfit-v3-versions',[])}
 function renderVersions(){const v=getVers();$('#versions').innerHTML=v.length?v.map((x,i)=>`<li><div><b>${esc(x.name)}</b><span>${esc(x.date)} · Readiness ${x.score}${x.contra?` · <b style="color:var(--amber)">${esc(x.contra)}</b>`:''}</span></div><button class="btn plain sm" data-restore="${i}">${ic('undo')} Restore</button></li>`).join(''):'<li><span>No saved versions yet. Save one per application to track what you sent.</span></li>'}
-$('#saveVersion').onclick=()=>{const v=getVers(),t=orderedText(S.finalText);
+$('#saveVersion').onclick=async()=>{const v=getVers(),t=orderedText(S.finalText);
   // contradiction detection across versions: same employer, different title or dates
   const roles=S.vault.filter(r=>r.type==='role');let contra='';
   v.forEach(old=>{roles.forEach(r=>{const m=old.text.split('\n').find(l=>l.includes(' '+r.employer+' ')||l.includes('— '+r.employer));if(m&&!m.includes(r.title))contra=`Title for ${r.employer} differs from “${old.name}”`;else if(m&&!m.includes(r.dates))contra=`Dates for ${r.employer} differ from “${old.name}”`})});
   v.unshift({name:`${S.inputs.company} · ${S.inputs.role} · ${modeObj().name}`,date:new Date().toLocaleDateString(),score:S.after?S.after.overall:0,text:t,tpl:{...S.tpl},contra});
-  if(!store.set('truthfit-v3-versions',v.slice(0,10)))return toast('Saving isn\'t available in this view');renderVersions();toast(contra?'Saved — contradiction with an earlier version flagged':'Version saved')};
+  if(!store.set('truthfit-v3-versions',v.slice(0,10)))return toast('Saving isn\'t available in this view');renderVersions();
+  if(AUTH.user){try{const r=await authFetch('/api/applications',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({company:S.inputs.company,role:S.inputs.role,region:S.inputs.region,format:S.activeFormat,content:t,template:S.tpl,readinessScore:S.after?.overall||0})}),data=await r.json();if(!r.ok)throw new Error(data.error||'Cloud save failed');toast(contra?'Saved to your account — earlier version conflict flagged':'Saved securely to your account')}catch(e){toast(`Saved in this browser; cloud save failed: ${e.message}`)}}else toast(contra?'Saved in this browser — contradiction with an earlier version flagged':'Saved in this browser · sign in to sync across devices')};
 $('#versions').addEventListener('click',e=>{const b=e.target.closest('[data-restore]');if(!b)return;const x=getVers()[+b.dataset.restore];if(!x)return;const prev={m:S.manualFinal,t:{...S.tpl}};S.manualFinal=x.text;S.tpl={...x.tpl};renderFinal();toast('Version restored',()=>{S.manualFinal=prev.m;S.tpl=prev.t;renderFinal()})});
 
 $('#letterAI').onclick=async()=>{

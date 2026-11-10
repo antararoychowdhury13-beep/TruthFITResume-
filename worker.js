@@ -1,12 +1,13 @@
+import { verifyToken } from "@clerk/backend";
+
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 const SECURITY_HEADERS = {
-  "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'",
+  "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://*.clerk.accounts.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.clerk.com; connect-src 'self' https://*.clerk.accounts.dev https://api.clerk.com; frame-src https://*.clerk.accounts.dev; font-src 'self' data:; worker-src 'self' blob: https://cdnjs.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' https://*.clerk.accounts.dev",
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
   "referrer-policy": "no-referrer",
   "x-content-type-options": "nosniff",
   "x-frame-options": "DENY",
 };
-
 function json(value, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: JSON_HEADERS });
 }
@@ -127,6 +128,27 @@ async function readJson(request) {
   try { return await request.json(); } catch { return undefined; }
 }
 
+async function authenticatedUser(request, env, url) {
+  if (!env.CLERK_SECRET_KEY) throw Object.assign(new Error("Sign-in is not configured"), { status: 503 });
+  const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) throw Object.assign(new Error("Sign in to continue"), { status: 401 });
+  try {
+    const payload = await verifyToken(token, { secretKey: env.CLERK_SECRET_KEY, authorizedParties: [url.origin] });
+    if (!payload.sub) throw new Error("Missing user identity");
+    const existing = await env.DB.prepare("SELECT id, clerk_user_id, email, display_name FROM users WHERE clerk_user_id = ?").bind(payload.sub).first();
+    if (existing) return existing;
+    const id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO users (id, clerk_user_id) VALUES (?, ?)").bind(id, payload.sub).run();
+    return { id, clerk_user_id: payload.sub, email: null, display_name: null };
+  } catch (error) {
+    if (error.status) throw error;
+    throw Object.assign(new Error("Your sign-in session is invalid or expired"), { status: 401 });
+  }
+}
+
+function authError(error) { return json({ error: error.message || "Authentication failed" }, error.status || 500); }
+const clean = (value, max) => String(value || "").trim().slice(0, max);
+
 function publicUrl(value) {
   let url; try { url = new URL(String(value || "")); } catch { throw new Error("Enter a valid public vacancy URL"); }
   if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) throw new Error("Only public http/https URLs are supported");
@@ -156,9 +178,37 @@ async function readLimited(response, max = 2_000_000) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (request.method === "POST" && url.pathname.startsWith("/api/")) {
+    if (["POST","PUT","PATCH","DELETE"].includes(request.method) && url.pathname.startsWith("/api/")) {
       const blocked = await guard(request, env, url);
       if (blocked) return blocked;
+    }
+    if (url.pathname === "/api/auth/config" && request.method === "GET") return json({ enabled: Boolean(env.CLERK_PUBLISHABLE_KEY && env.CLERK_SECRET_KEY && env.DB), publishableKey: env.CLERK_PUBLISHABLE_KEY || "" });
+    if (url.pathname === "/api/me" && request.method === "GET") {
+      try { const user = await authenticatedUser(request, env, url); return json({ user }); } catch (error) { return authError(error); }
+    }
+    if (url.pathname === "/api/applications" && request.method === "GET") {
+      try {
+        const user = await authenticatedUser(request, env, url);
+        const rows = await env.DB.prepare("SELECT id, company, role, region, status, current_step, created_at, updated_at FROM applications WHERE user_id = ? ORDER BY updated_at DESC LIMIT 50").bind(user.id).all();
+        return json({ applications: rows.results || [] });
+      } catch (error) { return authError(error); }
+    }
+    if (url.pathname === "/api/applications" && request.method === "POST") {
+      try {
+        const user = await authenticatedUser(request, env, url), body = await readJson(request);
+        if (!body) return json({ error: "Application data is required" }, 400);
+        const company=clean(body.company,160),role=clean(body.role,160),content=clean(body.content,120000),format=["1","detail"].includes(body.format)?body.format:"detail";
+        if (!company || !role || content.length < 80) return json({ error: "Company, role and generated résumé are required" }, 400);
+        const appId=crypto.randomUUID(),versionId=crypto.randomUUID(),now=new Date().toISOString(),score=Math.max(0,Math.min(100,Number(body.readinessScore)||0));
+        await env.DB.batch([
+          env.DB.prepare("INSERT INTO applications (id,user_id,company,role,region,status,current_step,created_at,updated_at) VALUES (?,?,?,?,?,'complete',7,?,?)").bind(appId,user.id,company,role,clean(body.region,20),now,now),
+          env.DB.prepare("INSERT INTO resume_versions (id,application_id,user_id,format,content,template_json,readiness_score,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(versionId,appId,user.id,format,content,JSON.stringify(body.template||{}).slice(0,10000),score,now)
+        ]);
+        return json({ application: { id: appId, versionId, company, role, savedAt: now } }, 201);
+      } catch (error) { return authError(error); }
+    }
+    if (url.pathname === "/api/account" && request.method === "DELETE") {
+      try { const user=await authenticatedUser(request, env, url);await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id).run();return json({ deleted: true }); } catch (error) { return authError(error); }
     }
     if (url.pathname === "/api/models" && request.method === "GET") return json({
       available: available(env),
