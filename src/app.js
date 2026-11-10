@@ -688,7 +688,7 @@ function genericChanges(){
   if(!newSum){/* weak match: never rewrite the summary towards a role the evidence doesn't support */}
   else if(sRec)out.push({id:'x1',title:'Align the summary to the role',type:'replace',targets:proven.slice(0,4).map(r=>r.id),before:sRec.text,after:newSum+' '+sRec.text,cites:[sRec.id,...proven.slice(0,3).map(r=>r.rec).filter(Boolean)],origin:['vac'],basis:'direct',risk:'low',why:'Leads with the job title and requirements your vault already proves.'});
   else out.push({id:'x1',title:'Add a role-aligned summary',type:'top',heading:'PROFESSIONAL SUMMARY',targets:proven.slice(0,4).map(r=>r.id),before:'',after:newSum,cites:proven.slice(0,3).map(r=>r.rec).filter(Boolean),origin:['vac'],basis:'direct',risk:'low',why:'Recruiters and ATS read the top third first.'});
-  const short=proven.filter(r=>r.label.split(' ').length<=4).map(r=>r.label),tRec=S.vault.find(v=>v.type==='tools');
+  const short=proven.filter(r=>capabilityRequirement(r)&&r.label.split(' ').length<=5).map(r=>r.label),tRec=S.vault.find(v=>v.type==='tools');
   if(short.length&&newSum){if(tRec)out.push({id:'x2',title:'Lead the skills section with the role\'s language',type:'replace',targets:proven.filter(r=>short.includes(r.label)).map(r=>r.id),before:tRec.text,after:short.join(' · ')+'\n'+tRec.text,cites:[tRec.id,...proven.filter(r=>short.includes(r.label)).map(r=>r.rec).filter(Boolean)].slice(0,5),origin:['vac'],basis:'direct',risk:'low',why:'ATS systems scan for exact phrases from the vacancy.'});
     else out.push({id:'x2',title:'Add a skills section in the role\'s language',type:'add',heading:'SKILLS',targets:proven.filter(r=>short.includes(r.label)).map(r=>r.id),before:'',after:short.join(' · '),cites:proven.filter(r=>short.includes(r.label)).map(r=>r.rec).filter(Boolean).slice(0,5),origin:['vac'],basis:'direct',risk:'low',why:'ATS systems scan for exact phrases from the vacancy.'})}
   const firstRole=S.vault.find(v=>v.type==='role');
@@ -696,6 +696,7 @@ function genericChanges(){
   return out;
 }
 function polish(a){a=a.replace(/^[•\-*]\s*/,'').trim();a=a.charAt(0).toUpperCase()+a.slice(1);return '• '+(/[.!?]$/.test(a)?a:a+'.')}
+function capabilityRequirement(r){return !r.gate&&!/\b(degree|bachelor|master|minimum|years?|qualification|eligib|location|visa|citizen|proficiency in .*tools?)\b/i.test(r.label)}
 function allChanges(){
   const gc=S.reqs.filter(r=>S.gaps[r.id]&&S.gaps[r.id].status==='answered').map(r=>({id:'ga-'+r.id,title:`Add your ${r.label.replace(/…$/,'').split(' — ')[0]} example`,type:'add',heading:'ADDITIONAL EXPERIENCE',targets:[r.id],before:'',after:polish(S.gaps[r.id].answer),cites:[S.gaps[r.id].rec],origin:['evid'],basis:'direct',risk:'low',why:'Turns your gap-interview answer into a résumé bullet so the requirement is visibly proven.'}));
   return S.changes.concat(gc);
@@ -776,11 +777,12 @@ $('#acceptLow').onclick=()=>{const done=[];visibleChanges().forEach(c=>{const a=
 function insertInSection(ls,heading,line){let hi=ls.findIndex(l=>l.trim().toUpperCase()===heading);
   if(hi===-1){let ei=ls.findIndex(l=>/^EDUCATION/i.test(l.trim())&&isHeading(l));if(ei===-1)ei=ls.length;ls.splice(ei,0,heading,line,'');return ls}
   let j=hi+1;while(j<ls.length&&ls[j].trim()&&!isHeading(ls[j]))j++;ls.splice(j,0,line);return ls}
-function buildFinal(){let text=normalizeDocumentText(S.inputs.resume);const added=[];
+function buildFinal(){let text=normalizeDocumentText(S.inputs.resume);const added=[],seen=new Set(text.split('\n').map(l=>norm(l.replace(/^[•\-*]\s*/,''))).filter(Boolean));
   visibleChanges().filter(c=>S.decisions[c.id]==='accepted'&&!check(c,afterOf(c)).blocked).forEach(c=>{const a=afterOf(c);
     if(c.type==='replace'&&text.includes(c.before))text=text.replace(c.before,a);
     else if(c.type==='top'){const ls=text.split('\n');let at=ls.findIndex((l,i)=>i>0&&isHeading(l));if(at<0)at=Math.min(3,ls.length);ls.splice(at,0,c.heading,a,'');text=ls.join('\n')}
-    else if(c.type!=='replace')text=insertInSection(text.split('\n'),c.heading||'ADDITIONAL EXPERIENCE',a).join('\n');
+    else if(c.type!=='replace'){const unique=a.split('\n').filter(l=>l.trim()&&!seen.has(norm(l.replace(/^[•\-*]\s*/,''))));if(unique.length)text=insertInSection(text.split('\n'),c.heading||'ADDITIONAL EXPERIENCE',unique.join('\n')).join('\n')}
+    a.split('\n').forEach(l=>{const n=norm(l.replace(/^[•\-*]\s*/,''));if(n)seen.add(n)});
     a.split('\n').forEach(l=>l.trim()&&added.push(l.trim()))});
   S.added=new Set(added);return normalizeDocumentText(text)}
 function bulletValue(line){const n=norm(line);let score=/\d/.test(line)?3:0;S.reqs.forEach(r=>{if(r.priority==='must'&&r.kw.some(k=>k&&n.includes(k)))score+=statusOf(r)==='proven'?5:2});if(S.added&&S.added.has(line.trim()))score+=4;return score}
@@ -955,7 +957,7 @@ $('#dims').addEventListener('click',e=>{const t=e.target.closest('[data-dim-togg
   if(goBtn){go(+goBtn.dataset.dimGo);return}
   if(add){const i=+add.dataset.dimAdd,ta=$(`[data-dim-text="${i}"]`),v=ta.value.trim();if(words(v)<6)return toast('Add a specific example with at least six words');const rid='A'+(S.vault.filter(x=>x.type==='answer').length+1);S.vault.push({id:rid,type:'answer',text:v,src:'Your answer',confirmed:true,metrics:nums(v)});const req=add.dataset.req&&S.reqs.find(r=>r.id===add.dataset.req);if(req){S.gaps[req.id]={status:'answered',answer:v,rec:rid};req.rec=rid}S.manualFinal=insertInSection(S.finalText.split('\n'),'ADDITIONAL EVIDENCE',polish(v)).join('\n');renderFinal();S.dimOpen[i]=true;toast('Evidence added and score recalculated');return}
   if(!act)return;const i=+act.dataset.i;
-  if(act.dataset.dimAction==='keywords'){const n=norm(S.finalText),terms=S.reqs.filter(r=>statusOf(r)==='proven'&&trusted(recOf(r))).flatMap(r=>r.kw).filter(k=>k&&!n.includes(k));if(!terms.length)return toast('All verified terms are already present');S.manualFinal=insertInSection(S.finalText.split('\n'),'CORE SKILLS',terms.slice(0,8).map(x=>x.replace(/\b\w/g,c=>c.toUpperCase())).join(' · ')).join('\n');renderFinal();S.dimOpen[i]=true;toast('Verified job terms added and score recalculated')}
+  if(act.dataset.dimAction==='keywords'){const n=norm(S.finalText),terms=S.reqs.filter(r=>statusOf(r)==='proven'&&trusted(recOf(r))&&capabilityRequirement(r)).flatMap(r=>r.kw).filter(k=>k&&!n.includes(k));if(!terms.length)return toast('All verified capability terms are already present');S.manualFinal=insertInSection(S.finalText.split('\n'),'CORE CAPABILITIES',terms.slice(0,8).map(x=>x.replace(/\b\w/g,c=>c.toUpperCase())).join(' · ')).join('\n');renderFinal();S.dimOpen[i]=true;toast('Verified capability terms added and score recalculated')}
   if(act.dataset.dimAction==='parse'){applyTpl(PRESETS.classic,'classic');runParse(false);renderScores();S.dimOpen[i]=true;toast('Portal Safe applied and parse test rerun')}
   if(act.dataset.dimAction==='edit'){$('#editToggle').click();$('#finalEdit').focus()}
   if(act.dataset.dimAction==='review')go(6)
@@ -965,15 +967,20 @@ $('#dims').addEventListener('click',e=>{const t=e.target.closest('[data-dim-togg
 function letter(){if(S.aiLetter)return S.aiLetter;const I=S.inputs,name=(S.vault.find(v=>v.type==='name')||{}).text||'',ev=S.reqs.filter(r=>statusOf(r)==='proven'&&r.priority==='must').slice(0,3);
   const sig=S.signals.find(s=>s.type==='company'&&s.use);
   return `Dear Hiring Team at ${I.company},\n\nI'm applying for the ${I.role} role. ${sig?`Your emphasis on ${/collaboration/i.test(sig.text)?'collaboration and innovation with impact':'design at scale'} matches how I work. `:''}The vacancy asks for ${ev.map(r=>r.label.split(' — ')[0].toLowerCase()).join(', ')} — areas where I can point to specific results:\n\n${ev.map(r=>{const x=recOf(r);return '• '+(x?x.text:'').replace(/^[•\-*]\s*/,'')}).join('\n')}\n\nI'd welcome the chance to discuss how this experience could support ${I.company}'s design team.\n\nKind regards,\n${name}\n\n—\nEvery claim above is cited from your evidence vault.`}
+function renderFinalQuality(){const roles=S.vault.filter(v=>v.type==='role'),placeholder=/@example\.com|portfolio\.example\.com|example\.com/i.test(S.inputs.resume+' '+S.inputs.links),issues=[];
+  if(S.activeFormat!=='1'&&roles.length<4)issues.push(`The source résumé contains only ${roles.length} role${roles.length===1?'':'s'}. A detailed CV cannot include career history that was not supplied.`);
+  if(placeholder)issues.push('Sample contact or portfolio details are still present. Replace them before exporting.');
+  $('#finalQuality').classList.toggle('hide',!issues.length);$('#finalQuality').innerHTML=issues.length?`${ic('warn-fill')}<div><b>Final-document check</b><br>${issues.map(esc).join('<br>')}</div>`:''}
 function renderFinal(){
   const complete=normalizeDocumentText(S.manualFinal!=null?S.manualFinal:buildFinal());S.completeFinalText=complete;S.finalVersions={1:lengthVersion(complete,'1'),detail:lengthVersion(complete,'detail')};S.activeFormat=S.opts.pages==='both'?(S.activeFormat||'1'):S.opts.pages;S.finalText=S.manualFinal!=null?complete:S.finalVersions[S.activeFormat];
   if(S.activeFormat==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal';if(S.tplKey!=='compact')S.tplKey='custom'}
   $('#formatSwitch').classList.toggle('hide',S.opts.pages!=='both');$$('#formatSwitch [data-format]').forEach(b=>b.setAttribute('aria-selected',b.dataset.format===S.activeFormat));
   $('#finalTitle').textContent=S.activeFormat==='1'?'Design & Test · One-page résumé':'Design & Test · Detailed CV';
+  renderFinalQuality();
   $('#finalEdit').value=S.finalText;$('#letter').textContent=letter();
   renderTplUI();renderPaperOnly(false);runParse(false);renderScores();renderVersions();
 }
-$('#formatSwitch').addEventListener('click',e=>{const b=e.target.closest('[data-format]');if(!b||!S.finalVersions)return;S.activeFormat=b.dataset.format;S.finalText=S.finalVersions[S.activeFormat];if(S.activeFormat==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal'}$('#finalEdit').value=S.finalText;$('#finalTitle').textContent=S.activeFormat==='1'?'Design & Test · One-page résumé':'Design & Test · Detailed CV';$$('#formatSwitch [data-format]').forEach(x=>x.setAttribute('aria-selected',x===b));renderTplUI();renderPaperOnly(false);runParse(false);renderScores()});
+$('#formatSwitch').addEventListener('click',e=>{const b=e.target.closest('[data-format]');if(!b||!S.finalVersions)return;S.activeFormat=b.dataset.format;S.finalText=S.finalVersions[S.activeFormat];if(S.activeFormat==='1'){S.tpl={...S.tpl,density:'compact',layout:'one'};S.tplClass='portal'}$('#finalEdit').value=S.finalText;$('#finalTitle').textContent=S.activeFormat==='1'?'Design & Test · One-page résumé':'Design & Test · Detailed CV';$$('#formatSwitch [data-format]').forEach(x=>x.setAttribute('aria-selected',x===b));renderFinalQuality();renderTplUI();renderPaperOnly(false);runParse(false);renderScores()});
 function setTab(t){S.ftab=t;$$('[data-ftab]').forEach(x=>x.setAttribute('aria-selected',x.dataset.ftab===t));$('#finalWrap').classList.toggle('hide',t!=='resume');$('#parsedWrap').classList.toggle('hide',t!=='parsed');$('#letterWrap').classList.toggle('hide',t!=='letter');$('#editToggle').classList.toggle('hide',t!=='resume');$('#tplBar').classList.toggle('hide',t==='letter');if(t==='parsed'){runParse(true)}}
 $$('[data-ftab]').forEach(b=>b.onclick=()=>setTab(b.dataset.ftab));
 $$('[data-jump]').forEach(b=>b.onclick=()=>$('#'+b.dataset.jump).scrollIntoView({behavior:reduce?'auto':'smooth',block:'start'}));
